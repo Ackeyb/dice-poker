@@ -12,6 +12,16 @@ import {
   Dice,
 } from "@/shared/components/Dice/Dice2D";
 
+import {
+  DiceRollOverlay,
+} from "@/shared/components/Dice/DiceRollOverlay";
+
+import {
+  useCallback,
+  useRef,
+  useState,
+} from "react";
+
 export const DoubleUpScreen =
   () => {
 
@@ -35,7 +45,7 @@ export const DoubleUpScreen =
 
     status,
 
-    handleRoll,
+    resolveRoll,
 
     handleContinue,
 
@@ -43,45 +53,114 @@ export const DoubleUpScreen =
 
   } = useDoubleUpGame(score);
 
+  const [
+    isRollOverlayOpen,
+    setIsRollOverlayOpen,
+  ] = useState(false);
+
+  const [
+    overlayValues,
+    setOverlayValues,
+  ] = useState<number[]>([]);
+
+  const pendingRollValueRef =
+    useRef<number | null>(null);
+
+  const isRolling =
+    isRollOverlayOpen;
+
+  const handleRoll = () => {
+    if (!choice || isRolling) {
+      return;
+    }
+
+    const value =
+      Math.floor(
+        Math.random() * 6
+      ) + 1;
+
+    pendingRollValueRef.current =
+      value;
+
+    setOverlayValues([value]);
+    setIsRollOverlayOpen(true);
+  };
+
+  const completeRoll = useCallback(() => {
+    const value =
+      pendingRollValueRef.current;
+
+    setIsRollOverlayOpen(false);
+
+    if (value !== null) {
+      resolveRoll(value);
+    }
+
+    pendingRollValueRef.current = null;
+  }, [resolveRoll]);
+
   return (
 
-    <div className="p-4 space-y-4">
+    <div
+      className="
+        min-h-screen
+        bg-red-950
+        text-red-50
+        p-6
+        space-y-8
+      "
+    >
 
-      <div className="text-2xl">
+      <div className="text-5xl font-bold">
         Double Up
       </div>
 
-      <div>
-        Winners:
-        {" "}
-        {winnerIndexes
-          .map(i => i + 1)
-          .join(", ")}
-      </div>
+      <div
+        className="
+          grid gap-4
+          md:grid-cols-3
+          text-xl
+        "
+      >
 
-      <div>
-        Losers:
-        {" "}
-        {loserIndexes
-          .map(i => i + 1)
-          .join(", ")}
-      </div>
+        <div className="border border-red-700 p-4 rounded bg-red-900">
+          Winners:
+          {" "}
+          {winnerIndexes
+            .map(i => i + 1)
+            .join(", ")}
+        </div>
 
-      <div>
-        Score:
-        {" "}
-        {currentScore}
+        <div className="border border-red-700 p-4 rounded bg-red-900">
+          Losers:
+          {" "}
+          {loserIndexes
+            .map(i => i + 1)
+            .join(", ")}
+        </div>
+
+        <div className="border border-red-700 p-4 rounded bg-red-900">
+          Score:
+          {" "}
+          <span className="text-3xl font-bold">
+            {currentScore}
+          </span>
+        </div>
+
       </div>
 
       {status === "SELECT" && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-4">
 
           <button
             className={`
-              border px-4 py-2 rounded
+              border border-red-500
+              px-8 py-4 rounded
+              text-2xl font-bold
+              bg-red-900
               ${
                 choice === "HIGH"
-                  ? "bg-yellow-300"
+                  ? "bg-red-500 text-white"
                   : ""
               }
             `}
@@ -94,10 +173,13 @@ export const DoubleUpScreen =
 
           <button
             className={`
-              border px-4 py-2 rounded
+              border border-red-500
+              px-8 py-4 rounded
+              text-2xl font-bold
+              bg-red-900
               ${
                 choice === "LOW"
-                  ? "bg-yellow-300"
+                  ? "bg-red-500 text-white"
                   : ""
               }
             `}
@@ -110,13 +192,18 @@ export const DoubleUpScreen =
 
           <button
             disabled={
-              choice === null
+              choice === null ||
+              isRolling
             }
             className={`
-              border px-4 py-2 rounded
+              border border-red-200
+              px-10 py-4 rounded
+              text-2xl font-bold
+              bg-red-700
 
               ${
-                choice === null
+                choice === null ||
+                isRolling
                   ? "opacity-50"
                   : ""
               }
@@ -130,23 +217,81 @@ export const DoubleUpScreen =
       )}
 
       {status === "ROLLED" && (
-        <div className="flex justify-center">
+        <div className="space-y-8">
 
-          {rolledValue && (
-            <Dice
-              value={rolledValue}
-              disabled
-            />
-          )}
+          <div className="flex justify-center">
+
+            {rolledValue && (
+              <Dice
+                value={rolledValue}
+                disabled
+                className="
+                  w-32 h-32
+                  text-6xl
+                  border-4
+                  border-red-700
+                  bg-red-50
+                  text-red-950
+                  opacity-100
+                  shadow-xl
+                "
+              />
+            )}
+
+          </div>
+
+          <div className="text-4xl font-bold">
+            {isSuccess
+              ? "Success"
+              : "Failure"}
+          </div>
+
+          <div className="flex flex-wrap gap-4">
+
+            <button
+              disabled={!isSuccess}
+              className={`
+                border border-red-400
+                px-8 py-4 rounded
+                text-xl font-bold
+                bg-red-800
+                ${!isSuccess ? "opacity-50" : ""}
+              `}
+              onClick={handleContinue}
+            >
+              Continue
+            </button>
+
+            <button
+              className="
+                border border-red-200
+                px-8 py-4 rounded
+                text-xl font-bold
+                bg-red-700
+              "
+              onClick={handleFinish}
+            >
+              Finish
+            </button>
+
+          </div>
 
         </div>
       )}
 
       {status === "FINISHED" && (
 
-        <div className="space-y-2">
+        <div
+          className="
+            space-y-4
+            text-xl
+            border border-red-700
+            bg-red-900
+            p-6 rounded
+          "
+        >
 
-          <div className="text-xl">
+          <div className="text-4xl font-bold">
             Final Result
           </div>
 
@@ -195,6 +340,19 @@ export const DoubleUpScreen =
         </div>
 
       )}
+
+      <DiceRollOverlay
+        open={isRollOverlayOpen}
+        values={overlayValues}
+        onComplete={completeRoll}
+        diceScale={10}
+        diceClassName="
+          h-[520px]
+        "
+        panelClassName="
+          max-w-3xl
+        "
+      />
 
     </div>
   );

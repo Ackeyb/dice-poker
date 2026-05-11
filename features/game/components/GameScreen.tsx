@@ -1,13 +1,14 @@
 "use client";
 
 import { useGameEngine } from "../hooks/useGameEngine";
-import { judgeHand } from "../utils/judgeHand";
 import { getPlayerResults }
 from "../utils/getPlayerResults";
 import { getWinnersAndLosers }
 from "../utils/getWinnersAndLosers";
 import { HAND_STRENGTH }
 from "../constants/handStrength";
+import { calculateScore }
+from "../utils/calculateScore";
 import { useRouter }
 from "next/navigation";
 import {
@@ -20,7 +21,9 @@ import {
   DiceRollOverlay,
 } from "@/shared/components/Dice/DiceRollOverlay";
 import {
+  useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -41,9 +44,24 @@ export const GameScreen = () => {
     mounted,
     setMounted,
   ] = useState(false);
+
+  const pendingRollPhaseRef =
+    useRef<typeof state.phase | null>(
+      null
+    );
+
+  const pendingRollValuesRef =
+    useRef<number[] | null>(null);
   
   useEffect(() => {
-    setMounted(true);
+    const id =
+      setTimeout(() => {
+        setMounted(true);
+      }, 0);
+
+    return () => {
+      clearTimeout(id);
+    };
   }, []);
 
   const currentPlayer =
@@ -58,12 +76,6 @@ export const GameScreen = () => {
   losers,
   } = getWinnersAndLosers(results);
   
-  const hand = judgeHand(
-    currentPlayer.dice.map(
-    die => die.value
-    )
-  );
-  
   const isRound3Confirm =
     state.phase === "ROUND3_CONFIRM"; 
 
@@ -76,6 +88,28 @@ export const GameScreen = () => {
     state.phase === "ROUND2_ROLL" ||
     state.phase === "ROUND3_ROLL" ||
     state.phase === "ROUND3_HOLD";
+
+  const isAnimationLocked =
+    state.animationState === "ROLLING";
+
+  const isWaitingNext =
+    state.animationState === "WAITING_NEXT";
+
+  const resultScore =
+    winners.length > 0
+      ? calculateScore(winners[0].hand)
+      : 0;
+
+  const isTie =
+    state.phase === "RESULT" &&
+    winners.length === results.length &&
+    losers.length === results.length;
+
+  const canStartDoubleUp =
+    state.phase === "RESULT" &&
+    !isTie &&
+    winners.length > 0 &&
+    losers.length > 0;
   
   const router = useRouter();
 
@@ -85,56 +119,109 @@ export const GameScreen = () => {
     );
 
   const handleRoll = () => {
-
-    const values = Array.from(
-      { length: 5 },
-      () => Math.floor(Math.random() * 6) + 1
-    );
-
-    setShowRollOverlay(true);
-    setOverlayValues(values);
+    if (!canRoll || isAnimationLocked || isWaitingNext) {
+      return;
+    }
 
     dispatch({
-      type: "ROLL_DICE",
+      type: "SET_ANIMATION_STATE",
+      payload: {
+        state: "ROLLING",
+      },
     });
 
-    // Round1
-    if (state.phase === "ROUND1_ROLL") {
+    pendingRollPhaseRef.current =
+      state.phase;
+    
+    const values =
+      currentPlayer.dice.map(die =>
+        die.held
+          ? die.value
+          : Math.floor(Math.random() * 6) + 1
+      );
+
+    const rollingValues =
+      currentPlayer.dice.flatMap((die, index) =>
+        die.held
+          ? []
+          : [values[index]]
+      );
+
+    pendingRollValuesRef.current =
+      values;
+
+    setShowRollOverlay(true);
+    setOverlayValues(rollingValues);
+  };
+
+  const completeRoll = useCallback(() => {
+    const values =
+      pendingRollValuesRef.current;
+
+    setShowRollOverlay(false);
+
+    if (values) {
       dispatch({
-        type: "SET_PHASE",
+        type: "ROLL_DICE",
         payload: {
-          phase: "ROUND1_HOLD",
+          values,
+        },
+      });
+    }
+
+    dispatch({
+      type: "SET_ANIMATION_STATE",
+      payload: {
+        state: "WAITING_NEXT",
+      },
+    });
+
+    pendingRollValuesRef.current = null;
+  }, [dispatch]);
+
+  const handleNext = () => {
+    if (isAnimationLocked) {
+      return;
+    }
+
+    const rollPhase =
+      pendingRollPhaseRef.current;
+
+    if (isWaitingNext) {
+      if (rollPhase === "ROUND1_ROLL") {
+        dispatch({
+          type: "SET_PHASE",
+          payload: {
+            phase: "ROUND1_HOLD",
+          },
+        });
+      }
+
+      if (
+        rollPhase === "ROUND2_ROLL" ||
+        rollPhase === "ROUND3_HOLD" ||
+        rollPhase === "ROUND3_ROLL"
+      ) {
+        dispatch({
+          type: "ADVANCE_PHASE",
+        });
+      }
+
+      dispatch({
+        type: "SET_ANIMATION_STATE",
+        payload: {
+          state: "IDLE",
         },
       });
 
-      return;
-    }
-
-    // Round2
-    if (state.phase === "ROUND2_ROLL") {
-      dispatch({
-        type: "ADVANCE_PHASE",
-      });
+      pendingRollPhaseRef.current = null;
 
       return;
     }
 
-    // Round3
-    if (state.phase === "ROUND3_HOLD") {
-
-      dispatch({
-        type: "SET_PHASE",
-        payload: {
-          phase: "ROUND3_ROLL",
-        },
-      });
-
-      dispatch({
-        type: "ADVANCE_PHASE",
-      });
-
-      return;
-    }
+    dispatch({
+      type: "ADVANCE_PHASE",
+    });
   };
 
   if (!currentPlayer) {
@@ -177,6 +264,12 @@ export const GameScreen = () => {
                 {" "}
                 {HAND_STRENGTH[result.hand]}
               </div>
+
+              <div>
+                Score:
+                {" "}
+                {calculateScore(result.hand)}
+              </div>
             </div>
 
           ))}
@@ -185,10 +278,10 @@ export const GameScreen = () => {
 
             <div className="border p-2 rounded">
               <div>
-                Winners
+                {isTie ? "Tie" : "Winners"}
               </div>
 
-              {winners.map(winner => (
+              {(isTie ? results : winners).map(winner => (
                 <div key={winner.playerIndex}>
                   Player
                   {" "}
@@ -202,7 +295,7 @@ export const GameScreen = () => {
                 Losers
               </div>
 
-              {losers.map(loser => (
+              {(isTie ? [] : losers).map(loser => (
                 <div key={loser.playerIndex}>
                   Player
                   {" "}
@@ -220,7 +313,11 @@ export const GameScreen = () => {
 
         <button
           className="border px-4 py-2 rounded"
+          disabled={!canStartDoubleUp}
           onClick={() => {
+            if (!canStartDoubleUp) {
+              return;
+            }
 
             setDoubleUpData({
               winnerIndexes:
@@ -235,10 +332,10 @@ export const GameScreen = () => {
                     loser.playerIndex
                 ),
 
-              score: 100,
+              score: resultScore,
             });
 
-            router.push("/double-up");
+            router.push("/doubleup");
           }}
         >
           Double Up
@@ -268,9 +365,13 @@ export const GameScreen = () => {
 
             held={die.held}
 
-            disabled={!canHold}
+          disabled={!canHold || isAnimationLocked || isWaitingNext}
 
             onClick={() => {
+              if (!canHold || isAnimationLocked || isWaitingNext) {
+                return;
+              }
+
               dispatch({
                 type: "TOGGLE_HOLD",
                 payload: {
@@ -285,12 +386,16 @@ export const GameScreen = () => {
 
       <div className="flex gap-2">
         <button
-          disabled={canRoll ? false : true}
+          disabled={!canRoll || isAnimationLocked || isWaitingNext}
 
           className={`
             border px-4 py-2 rounded
 
-            ${!canRoll ? "opacity-50" : ""}
+            ${
+              !canRoll || isAnimationLocked || isWaitingNext
+                ? "opacity-50"
+                : ""
+            }
           `}
 
           onClick={handleRoll}
@@ -300,11 +405,8 @@ export const GameScreen = () => {
 
         <button
           className="border px-4 py-2 rounded"
-          onClick={() => {
-            dispatch({
-              type: "ADVANCE_PHASE",
-            });
-          }}
+          disabled={isAnimationLocked}
+          onClick={handleNext}
         >
           Next
         </button>
@@ -315,7 +417,12 @@ export const GameScreen = () => {
 
           <button
             className="border px-4 py-2 rounded"
+            disabled={isAnimationLocked || isWaitingNext}
             onClick={() => {
+              if (isAnimationLocked || isWaitingNext) {
+                return;
+              }
+
               dispatch({
                 type: "SET_PHASE",
                 payload: {
@@ -329,7 +436,12 @@ export const GameScreen = () => {
 
           <button
             className="border px-4 py-2 rounded"
+            disabled={isAnimationLocked || isWaitingNext}
             onClick={() => {
+              if (isAnimationLocked || isWaitingNext) {
+                return;
+              }
+
               dispatch({
                 type: "ADVANCE_PHASE",
               });
@@ -347,9 +459,7 @@ export const GameScreen = () => {
 
         values={overlayValues}
 
-        onComplete={() => {
-          setShowRollOverlay(false);
-        }}
+        onComplete={completeRoll}
       />
 
     </div>

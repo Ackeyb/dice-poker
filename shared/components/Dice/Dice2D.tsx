@@ -7,6 +7,8 @@ type Props = {
   disabled?: boolean;
 
   onClick?: () => void;
+
+  className?: string;
 };
 
 export const Dice = ({
@@ -14,6 +16,7 @@ export const Dice = ({
   held = false,
   disabled = false,
   onClick,
+  className = "",
 }: Props) => {
 
   return (
@@ -49,6 +52,8 @@ export const Dice = ({
             ? "opacity-50"
             : ""
         }
+
+        ${className}
       `}
     >
 

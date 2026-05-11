@@ -7,5 +7,5 @@ export const MULTIPLIERS = {
   THREE_DICE: 4,
   TWO_PAIR: 2,
   ONE_PAIR: 1,
-  PIG: 0,
+  BUTA: 0,
 } as const;

@@ -5,16 +5,24 @@ import {
   useRef,
 } from "react";
 
+import type DiceBox from "@3d-dice/dice-box";
+
 type Props = {
 
   values: number[];
 
   onRollComplete?: () => void;
+
+  scale?: number;
+
+  className?: string;
 };
 
 export const Dice3D = ({
   values,
   onRollComplete,
+  scale = 5,
+  className = "",
 }: Props) => {
 
   const containerRef =
@@ -23,49 +31,86 @@ export const Dice3D = ({
     );
 
   const diceBoxRef =
-    useRef<any>(null);
+    useRef<DiceBox | null>(null);
 
   useEffect(() => {
+    let active = true;
 
-    if (!containerRef.current) {
+    const container =
+      containerRef.current;
+
+    if (!container) {
       return;
     }
 
-  const init = async () => {
+    const diceValues =
+      values.slice(0, 5);
 
-    const module =
-      await import(
-        "@3d-dice/dice-box"
+    const init = async () => {
+
+      container.innerHTML = "";
+
+      const diceBoxModule =
+        await import(
+          "@3d-dice/dice-box"
+        );
+
+      if (!active) {
+        return;
+      }
+
+      const DiceBox =
+        diceBoxModule.default;
+
+      const box =
+        new DiceBox(
+          "#dice-box",
+          {
+            assetPath:
+              "/assets/dice-box/",
+            gravity: 1,
+            throwForce: 4,
+            spinForce: 3,
+            scale,
+          }
+        );
+
+      diceBoxRef.current = box;
+
+      await box.init();
+
+      if (!active) {
+        return;
+      }
+
+      await box.clear?.();
+
+      await box.roll(
+        diceValues.map(value => ({
+          sides: 6,
+          value,
+        }))
       );
 
-    const DiceBox =
-      module.default;
+      if (active) {
+        onRollComplete?.();
+      }
+    };
 
-    const box =
-      new DiceBox(
-        "#dice-box",
-        {
-          assetPath:
-            "/assets/dice-box/",
-        }
-      );
+    init();
 
-    diceBoxRef.current = box;
+    return () => {
+      active = false;
 
-    await box.init();
+      const box = diceBoxRef.current;
 
-    await box.roll(
-      values.map(value => ({
-        sides: 6,
-        value,
-      }))
-    );
+      box?.clear?.();
 
-    onRollComplete?.();
-  };
+      container.innerHTML = "";
 
-  init();
-    }, []);
+      diceBoxRef.current = null;
+    };
+  }, [onRollComplete, scale, values]);
 
   return (
 
@@ -73,10 +118,12 @@ export const Dice3D = ({
       id="dice-box"
       ref={containerRef}
 
-      className="
+      className={`
         w-full
         h-[300px]
-      "
+
+        ${className}
+      `}
     />
 
   );

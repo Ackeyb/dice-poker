@@ -3,6 +3,9 @@ import { GamePhase } from "./phase";
 export type GameAction =
     {
       type: "ROLL_DICE";
+      payload: {
+        values: number[];
+      };
     }
 
   | {
@@ -26,7 +29,7 @@ export type GameAction =
   | {
       type: "SET_ANIMATION_STATE";
       payload: {
-        state: "IDLE" | "ROLLING";
+        state: "IDLE" | "ROLLING" | "WAITING_NEXT";
       };
     }
 

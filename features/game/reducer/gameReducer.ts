@@ -11,6 +11,7 @@ export const gameReducer = (
       const canRoll =
         state.phase === "ROUND1_ROLL" ||
         state.phase === "ROUND2_ROLL" ||
+        state.phase === "ROUND3_ROLL" ||
         state.phase === "ROUND3_HOLD";
 
       if (!canRoll) {
@@ -24,7 +25,7 @@ export const gameReducer = (
 
       const nextDice =
         currentPlayer.dice.map(
-          die => {
+          (die, index) => {
 
             if (die.held) {
               return die;
@@ -34,9 +35,8 @@ export const gameReducer = (
               ...die,
 
               value:
-                Math.floor(
-                  Math.random() * 6
-                ) + 1,
+                action.payload.values[index] ??
+                die.value,
             };
           }
         );
@@ -144,7 +144,43 @@ export const gameReducer = (
           };
         }
 
+        case "ROUND3_CONFIRM": {
+
+          if (!isLastPlayer) {
+            return {
+              ...state,
+              currentPlayerIndex:
+                state.currentPlayerIndex + 1,
+              phase: "ROUND3_CONFIRM",
+            };
+          }
+
+          return {
+            ...state,
+            currentPlayerIndex: 0,
+            phase: "RESULT",
+          };
+        }
+
         case "ROUND3_HOLD": {
+
+          if (!isLastPlayer) {
+            return {
+              ...state,
+              currentPlayerIndex:
+                state.currentPlayerIndex + 1,
+              phase: "ROUND3_CONFIRM",
+            };
+          }
+
+          return {
+            ...state,
+            currentPlayerIndex: 0,
+            phase: "RESULT",
+          };
+        }
+
+        case "ROUND3_ROLL": {
 
           if (!isLastPlayer) {
             return {

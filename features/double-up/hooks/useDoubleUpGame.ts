@@ -44,17 +44,7 @@ export const useDoubleUpGame = (
     "SELECT"
   );
 
-  const handleRoll = () => {
-
-    if (!choice) {
-      return;
-    }
-
-    const value =
-      Math.floor(
-        Math.random() * 6
-      ) + 1;
-
+  const resolveRoll = (value: number) => {
     setRolledValue(value);
 
     const success =
@@ -102,7 +92,7 @@ export const useDoubleUpGame = (
 
     status,
 
-    handleRoll,
+    resolveRoll,
 
     handleContinue,
 

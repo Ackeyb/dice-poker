@@ -11,7 +11,8 @@ export type PlayerState = {
 
 export type AnimationState =
   | "IDLE"
-  | "ROLLING";
+  | "ROLLING"
+  | "WAITING_NEXT";
 
 export type GameState = {
   phase: GamePhase;
