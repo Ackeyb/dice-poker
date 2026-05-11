@@ -16,7 +16,7 @@ type Props = {
 
   values: number[];
 
-  onComplete: () => void;
+  onComplete: (values: number[]) => void;
 
   diceScale?: number;
 
@@ -47,14 +47,14 @@ export const DiceRollOverlay = ({
     };
   }, []);
 
-  const handleRollComplete = useCallback(() => {
+  const handleRollComplete = useCallback((values: number[]) => {
     if (completeTimerRef.current) {
       clearTimeout(completeTimerRef.current);
     }
 
     completeTimerRef.current =
       setTimeout(() => {
-        onComplete();
+        onComplete(values);
       }, 1500);
   }, [onComplete]);
 

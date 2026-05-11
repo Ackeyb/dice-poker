@@ -18,7 +18,6 @@ import {
 
 import {
   useCallback,
-  useRef,
   useState,
 } from "react";
 
@@ -63,9 +62,6 @@ export const DoubleUpScreen =
     setOverlayValues,
   ] = useState<number[]>([]);
 
-  const pendingRollValueRef =
-    useRef<number | null>(null);
-
   const isRolling =
     isRollOverlayOpen;
 
@@ -74,29 +70,19 @@ export const DoubleUpScreen =
       return;
     }
 
-    const value =
-      Math.floor(
-        Math.random() * 6
-      ) + 1;
-
-    pendingRollValueRef.current =
-      value;
-
-    setOverlayValues([value]);
+    setOverlayValues([1]);
     setIsRollOverlayOpen(true);
   };
 
-  const completeRoll = useCallback(() => {
-    const value =
-      pendingRollValueRef.current;
-
+  const completeRoll = useCallback((values: number[]) => {
     setIsRollOverlayOpen(false);
 
-    if (value !== null) {
+    const value =
+      values[0];
+
+    if (typeof value === "number") {
       resolveRoll(value);
     }
-
-    pendingRollValueRef.current = null;
   }, [resolveRoll]);
 
   return (

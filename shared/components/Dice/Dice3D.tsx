@@ -11,7 +11,7 @@ type Props = {
 
   values: number[];
 
-  onRollComplete?: () => void;
+  onRollComplete?: (values: number[]) => void;
 
   scale?: number;
 
@@ -85,15 +85,18 @@ export const Dice3D = ({
 
       await box.clear?.();
 
-      await box.roll(
-        diceValues.map(value => ({
-          sides: 6,
-          value,
-        }))
-      );
+      const results =
+        diceValues.length > 0
+          ? await box.roll({
+              sides: 6,
+              qty: diceValues.length,
+            })
+          : [];
 
       if (active) {
-        onRollComplete?.();
+        onRollComplete?.(
+          results.map(result => result.value)
+        );
       }
     };
 

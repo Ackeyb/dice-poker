@@ -3,12 +3,15 @@
 import { useReducer } from "react";
 
 import { gameReducer } from "../reducer/gameReducer";
-import { gameInitialState } from "../reducer/gameInitialState";
+import { createGameInitialState } from "../reducer/gameInitialState";
 
-export const useGameEngine = () => {
+export const useGameEngine = (
+  playerNames?: string[]
+) => {
   const [state, dispatch] = useReducer(
     gameReducer,
-    gameInitialState
+    playerNames,
+    createGameInitialState
   );
 
   return {

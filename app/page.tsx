@@ -1,3 +1,5 @@
+import SettingsPage from "./settings/page";
+
 export default function HomePage() {
-  return <div>Home</div>;
+  return <SettingsPage />;
 }

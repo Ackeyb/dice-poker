@@ -1,6 +1,11 @@
 declare module "@3d-dice/dice-box" {
   type DiceBoxRollDie = {
     sides: number;
+    qty?: number;
+  };
+
+  type DiceBoxRollResult = {
+    sides: number;
     value: number;
   };
 
@@ -17,7 +22,9 @@ declare module "@3d-dice/dice-box" {
 
     init(): Promise<void>;
 
-    roll(dice: DiceBoxRollDie[]): Promise<void>;
+    roll(
+      dice: DiceBoxRollDie[] | DiceBoxRollDie | string
+    ): Promise<DiceBoxRollResult[]>;
 
     clear?(): Promise<void> | void;
   }
