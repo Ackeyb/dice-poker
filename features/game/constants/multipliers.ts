@@ -1,0 +1,11 @@
+export const MULTIPLIERS = {
+  PINSORO: 100,
+  FIVE_DICE: 50,
+  FOUR_DICE: 20,
+  STRAIGHT: 10,
+  FULL_HOUSE: 8,
+  THREE_DICE: 4,
+  TWO_PAIR: 2,
+  ONE_PAIR: 1,
+  PIG: 0,
+} as const;
