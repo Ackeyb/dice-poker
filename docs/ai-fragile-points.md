@@ -2,9 +2,18 @@
 
 # Fragile / Dangerous Areas
 
-このprojectで AIエージェント（Codex含む）が壊しやすい箇所、
-cleanup時に誤削除しやすい箇所、
-hidden dependency がある箇所を整理する。
+このファイルは、現在の実コードベースを前提に、AIエージェントが壊しやすい箇所、hidden dependency、legacy / temporary implementation を整理する。
+
+最終確認時点の主な対象:
+
+```txt
+app/
+features/
+shared/
+styles/
+types/
+public/assets/dice-box/
+```
 
 ---
 
@@ -14,948 +23,675 @@ hidden dependency がある箇所を整理する。
 
 CRITICAL
 
----
-
-# Files
+## Files
 
 ```txt
 shared/components/Dice/Dice3D.tsx
 shared/components/Dice/DiceRollOverlay.tsx
 types/dice-box.d.ts
+public/assets/dice-box/
 ```
 
----
+## Why Fragile
 
-# Problem Type
-
-- dynamic import
-- SSR unsafe
-- hidden browser dependency
-- unstable third-party API
-- cleanup fragile
-
----
-
-# Why Fragile
-
-dice-box は SSR 非対応。
-
-以下を行うと即壊れる：
+`@3d-dice/dice-box` は browser / WebGL / canvas / physics runtime 前提で、SSR 安全ではない。`Dice3D.tsx` は `useEffect` 内で dynamic import している。
 
 ```ts
-import DiceBox from "@3d-dice/dice-box";
-```
-
-module scope import。
-
----
-
-# Required Pattern
-
-必須：
-
-```ts
-const module =
+const diceBoxModule =
   await import(
     "@3d-dice/dice-box"
   );
 ```
 
----
+module scope で static import すると SSR / hydration / build のどこかで壊れる可能性が高い。
 
-# AI Agents Frequently Break
+## Hidden Dependency
 
-## Dangerous Cleanup
-
-Codexが：
-
-- 未使用import削除
-- any cleanup
-- dynamic import整理
-
-を行うと壊れる。
-
----
-
-## Dangerous Refactor
-
-禁止：
-
-```ts
-const box = new DiceBox(...)
-```
-
-を module scope に移動。
-
----
-
-# Hidden Dependency
-
-dice-box は：
+`DiceBox` constructor は以下に依存している。
 
 ```txt
-window
-document
-WebGL
-canvas
-physics engine
+selector: "#dice-box"
+assetPath: "/assets/dice-box/"
+public/assets/dice-box/ammo/
+public/assets/dice-box/themes/
+window / document / canvas / WebGL
 ```
 
-へ暗黙依存。
+`public/assets/dice-box/` はコードから直接 import されないが runtime 必須。cleanup で削除禁止。
 
-server render不可。
+## Current Dynamic Behavior
 
----
+現在は、渡された `values` の数だけ dice-box に `qty` を渡し、物理演算の着地結果を `onRollComplete(values)` で親へ返す。
 
-# Cleanup Risk
-
-cleanup時に：
-
-```ts
-mounted guard
+```txt
+GameScreen / DoubleUpScreen
+  -> DiceRollOverlay(values = dice count placeholder)
+  -> Dice3D rolls qty dice
+  -> dice-box returned values
+  -> parent state is updated
 ```
 
-を削除しやすい。
+重要: `values` は最終出目ではなく「振るダイス数」を表す placeholder として使われる。実際の出目は `box.roll(...)` の戻り値。
 
-削除すると hydration mismatch。
+## Required Safeguards
+
+- `use client` を維持する
+- dynamic import を維持する
+- `assetPath: "/assets/dice-box/"` を維持する
+- `public/assets/dice-box/` を削除しない
+- `onRollComplete(values: number[])` の値を親側の結果更新に使う
+- `container.innerHTML = ""` と `box.clear?.()` の cleanup を残す
+
+## Deprecated Notes From Older Docs
+
+以前の docs では「UI が乱数を生成して Overlay が同一 values を描画する」と説明していたが、現在は deprecated。現在の single source of truth は dice-box の roll result。
 
 ---
 
-# Required Safeguards
+# 2. DiceRollOverlay Timing
 
-## Preserve
+## Severity
 
-- use client
-- dynamic import
-- mounted guard
-- cleanup logic
+HIGH
 
----
+## Files
 
-# Never Remove
-
-```ts
-if (!mounted) {
-  return null;
-}
+```txt
+shared/components/Dice/DiceRollOverlay.tsx
+features/game/components/GameScreen.tsx
+features/double-up/components/DoubleUpScreen.tsx
 ```
 
+## Why Fragile
+
+Overlay は単なる表示ではなく、phase progression のタイミング制御点になっている。
+
+```txt
+ROLL button
+  -> animationState = ROLLING
+  -> DiceRollOverlay open
+  -> Dice3D roll complete
+  -> 1500ms delay
+  -> onComplete(rolledValues)
+  -> game / double-up state update
+```
+
+`DiceRollOverlay` の `setTimeout(..., 1500)` は、出目が見えた後に状態更新するための意図的な delay。不要そうに見えても削除しない。
+
+## Cleanup Risk
+
+`completeTimerRef` や cleanup effect は、unmount 後の callback 実行を避けるために必要。
+
+## Required Safeguards
+
+- `open === false` のときだけ `return null`
+- `onComplete` の引数 `values: number[]` を保持する
+- timer cleanup を残す
+- overlay close より前に roll result を捨てない
+
 ---
 
-# 2. gameReducer
+# 3. Game State Management
 
 ## Severity
 
 CRITICAL
 
----
-
-# Files
+## Files
 
 ```txt
+features/game/hooks/useGameEngine.ts
 features/game/reducer/gameReducer.ts
+features/game/reducer/gameInitialState.ts
+features/game/types/game.ts
+features/game/types/phase.ts
+features/game/types/reducer.ts
 ```
 
+## Current State Shape
+
+`useGameEngine(playerNames?)` は `useReducer` と lazy initializer `createGameInitialState` を使う。
+
+```txt
+GameState
+  phase
+  currentPlayerIndex
+  animationState
+  players[]
+```
+
+`players[]` は settings / query params 由来の名前で初期化される。指定がない場合は `["Player 1", "Player 2"]`。
+
+## Hidden Dependency
+
+`useReducer(gameReducer, playerNames, createGameInitialState)` の lazy initializer により、初回 render 時の `playerNames` だけが初期化に使われる。`playerNames` prop が後から変わっても game state は再初期化されない。
+
+## Player Status Handling
+
+現在、player の進行状態は明示的な status field ではなく、以下から派生している。
+
+```txt
+currentPlayerIndex
+phase
+animationState
+dice[].held
+```
+
+`GamePlayer` には `hand` と `point` があるが、現在の result 表示では `getPlayerResults(players)` が毎回 dice values から `judgeHand` している。`hand` / `point` は legacy / temporary field として扱う。
+
+## Required Safeguards
+
+- reducer に side effect を入れない
+- `currentPlayerIndex` と `phase` の coupling を崩さない
+- player status を安易に新規 field 化しない
+- lazy initializer の挙動を理解せずに prop-driven reset を入れない
+
 ---
 
-# Problem Type
+# 4. Game Progression / Phase Logic
 
-- hidden phase dependency
-- fragile switch logic
-- reducer coupling
+## Severity
 
----
+CRITICAL
 
-# Why Fragile
+## Files
 
-phase遷移が密結合。
+```txt
+features/game/components/GameScreen.tsx
+features/game/reducer/gameReducer.ts
+features/game/types/phase.ts
+```
 
-1箇所壊れると：
+## Current Active Flow
 
-- Roll不可
-- Hold不可
-- phase softlock
-- RESULT到達不能
-
-が起きる。
-
----
-
-# Hidden Dependency
-
-phase定義：
+現在の実UI上の flow:
 
 ```txt
 ROUND1_ROLL
+  Roll
+  animation result applies
+  automatically SET_PHASE -> ROUND1_HOLD
+
 ROUND1_HOLD
+  Hold allowed
+  NEXT -> next player ROUND1_ROLL
+  last player NEXT -> ROUND2_ROLL
 
 ROUND2_ROLL
+  Roll
+  animation result applies
+  animationState -> WAITING_NEXT
+  NEXT -> next player ROUND2_ROLL
+  last player NEXT -> ROUND3_CONFIRM
 
 ROUND3_CONFIRM
+  "3rd Roll" -> SET_PHASE ROUND3_HOLD
+  "Skip" -> ADVANCE_PHASE
+
 ROUND3_HOLD
-ROUND3_ROLL
+  Hold allowed
+  Roll is also allowed directly in this phase
+  animation result applies
+  animationState -> WAITING_NEXT
+  NEXT -> next player ROUND3_CONFIRM
+  last player NEXT -> RESULT
+
+RESULT
+  modal shows Double Up / Finish
 ```
 
----
+## Hidden Dependency
 
-# Important
-
-存在しないphase：
-
-```txt
-ROUND2_HOLD
-```
-
-AIが勝手に追加しやすい。
-
----
-
-# Cleanup Risk
-
-Codexが：
+`ROUND3_HOLD` is both hold phase and roll phase. `gameReducer` allows `ROLL_DICE` in `ROUND3_HOLD`.
 
 ```ts
-switch(action.type)
+state.phase === "ROUND3_HOLD"
 ```
 
-を整理して：
+This is intentional. Do not split it into a new `ROUND3_ROLL` path unless the UI, reducer, and NEXT handling are changed together.
 
-- default削除
-- return漏れ
-- immutable破壊
+## Deprecated / Legacy Phases
 
-を起こしやすい。
+`features/game/types/phase.ts` still includes:
 
----
+```txt
+ROUND3_ROLL
+JUDGE
+ADVANCE_PHASE
+```
 
-# Required Safeguards
+Current UI does not set `ROUND3_ROLL`. `JUDGE` and `ADVANCE_PHASE` are not active phases in current reducer transitions. Treat them as legacy type values, not as reliable runtime phases.
 
-## Never Introduce
+## Deprecated Actions
 
-- extra phases
-- reducer side effects
-- mutable state
-
----
-
-# Preserve
-
-- current phase names
-- reducer structure
+`NEXT_PLAYER` exists in `GameAction` and reducer, but current UI does not dispatch it. It increments `currentPlayerIndex` without bounds checks, so do not use it for normal progression.
 
 ---
 
-# 3. Roll Result Synchronization
+# 5. Animation Lock / NEXT Gating
 
 ## Severity
 
 HIGH
 
+## Files
+
+```txt
+features/game/components/GameScreen.tsx
+features/game/types/game.ts
+```
+
+## Current Behavior
+
+`animationState` controls button availability.
+
+```txt
+IDLE
+ROLLING
+WAITING_NEXT
+```
+
+- `ROLLING`: Roll / Hold / Next interactions are blocked.
+- `WAITING_NEXT`: Roll and Hold are blocked; user must press NEXT.
+- Exception: 1st Roll does not enter `WAITING_NEXT`; it applies values and moves directly to `ROUND1_HOLD`.
+
+## Hidden Dependency
+
+`pendingRollPhaseRef` stores the phase at the moment Roll was clicked. `handleNext` depends on that ref to decide whether `ADVANCE_PHASE` should run after waiting.
+
+`pendingRollIndexesRef` maps dice-box returned values back onto the actual dice indexes. Removing it causes held dice and partial rolls to desync.
+
+## Required Safeguards
+
+- Do not replace refs with render state unless timing is reworked carefully
+- Do not update dice values before animation result returns
+- Do not auto-advance 2nd / 3rd roll after animation
+- Keep 1st roll auto transition to `ROUND1_HOLD`
+
 ---
 
-# Files
+# 6. Roll Result Synchronization
+
+## Severity
+
+CRITICAL
+
+## Files
 
 ```txt
 features/game/components/GameScreen.tsx
 features/game/reducer/gameReducer.ts
+features/double-up/components/DoubleUpScreen.tsx
+shared/components/Dice/Dice3D.tsx
 ```
 
----
-
-# Problem Type
-
-- hidden dependency
-- duplicated random source
-
----
-
-# Why Fragile
-
-現在：
+## Current Correct Architecture
 
 ```txt
-overlay random
-≠
-reducer random
+Dice3D
+  -> receives dice count placeholder
+  -> calls dice-box roll(qty)
+  -> receives actual landed values
+
+GameScreen
+  -> maps landed values to unheld dice indexes
+  -> dispatches ROLL_DICE with full 5 values
+
+gameReducer
+  -> updates only non-held dice
 ```
 
-になりやすい。
+Double Up uses the same `DiceRollOverlay`; `values[0]` from dice-box is passed to `resolveRoll(value)`.
 
----
+## Dangerous Refactor
 
-# Dangerous Refactor
-
-AIが：
-
-```ts
-Math.random()
-```
-
-を reducer に戻しやすい。
-
----
-
-# Correct Architecture
-
-```txt
-UI
- ↓ values生成
-Reducer
- ↓ values適用
-Overlay
- ↓ 同一values描画
-```
-
----
-
-# Cleanup Risk
-
-overlay values state を：
-
-```txt
-unused state
-```
-
-判定で削除しやすい。
-
----
-
-# Required Safeguards
-
-## Single Source of Truth
-
-random生成は1箇所のみ。
-
----
-
-# 4. DiceRollOverlay
-
-## Severity
-
-HIGH
-
----
-
-# Files
-
-```txt
-shared/components/Dice/DiceRollOverlay.tsx
-```
-
----
-
-# Problem Type
-
-- timing dependency
-- cleanup dependency
-- animation state dependency
-
----
-
-# Why Fragile
-
-overlay は：
-
-- animation lock
-- Dice3D init
-- cleanup
-- phase timing
-
-に依存。
-
----
-
-# Hidden Dependency
-
-overlay close timing が：
-
-```ts
-setTimeout(...)
-```
-
-依存。
-
----
-
-# Cleanup Risk
-
-Codexが：
-
-```ts
-return null
-```
-
-条件を整理して壊しやすい。
-
----
-
-# Required Safeguards
-
-## Preserve
-
-- open state
-- cleanup timing
-- onComplete callback
-
----
-
-# 5. mounted Guard
-
-## Severity
-
-HIGH
-
----
-
-# Files
-
-```txt
-features/game/components/GameScreen.tsx
-```
-
----
-
-# Problem Type
-
-- hydration dependency
-- SSR workaround
-
----
-
-# Why Fragile
-
-App Router hydration mismatch 回避用。
-
----
-
-# Dangerous Cleanup
-
-AIが：
-
-```txt
-unused mounted state
-```
-
-扱いで削除しやすい。
-
----
-
-# Removing Causes
-
-- hydration mismatch
-- disabled mismatch
-- random mismatch
-- dice mismatch
-
----
-
-# Required Safeguards
-
-## Preserve
-
-```ts
-if (!mounted) {
-  return null;
-}
-```
-
----
-
-# 6. shared/components Boundary
-
-## Severity
-
-MEDIUM
-
----
-
-# Files
-
-```txt
-shared/components/
-```
-
----
-
-# Problem Type
-
-- architecture boundary
-- feature dependency leak
-
----
-
-# Why Fragile
-
-shared は feature 非依存。
-
----
-
-# AI Agents Frequently Break
-
-shared に：
-
-- game logic
-- reducer
-- Zustand store
-
-を import しやすい。
-
----
-
-# Forbidden
-
-```ts
-import { useGameStore } ...
-```
-
-inside shared。
-
----
-
-# Required Safeguards
-
-## shared Rules
-
-shared は：
-
-- pure UI
-- generic logic only
-
----
-
-# 7. Zustand DoubleUp Store
-
-## Severity
-
-MEDIUM
-
----
-
-# Files
-
-```txt
-features/double-up/store/
-```
-
----
-
-# Problem Type
-
-- transient routing state
-- hidden navigation dependency
-
----
-
-# Why Fragile
-
-routing跨ぎ state。
-
----
-
-# Hidden Dependency
+Do not reintroduce `Math.random()` in:
 
 ```txt
 GameScreen
- ↓
-setDoubleUpData
- ↓
-router.push("/double-up")
+DoubleUpScreen
+gameReducer
+render paths
 ```
 
-順序依存。
+The visible animation value and actual state value must come from the same dice-box roll result.
 
 ---
 
-# Dangerous Refactor
-
-AIが async化して壊しやすい。
-
----
-
-# Required Safeguards
-
-## Preserve Order
-
-```ts
-setDoubleUpData(...)
-router.push(...)
-```
-
----
-
-# 8. public/assets/dice-box
+# 7. Cutoff Logic
 
 ## Severity
 
 HIGH
 
----
-
-# Files
+## Files
 
 ```txt
-public/assets/dice-box/
+features/game/components/GameScreen.tsx
+features/game/reducer/gameReducer.ts
+features/game/utils/hasAllHeld.ts
+```
+
+## Current Behavior
+
+There is no automatic cutoff based on all dice held. The existing `hasAllHeld.ts` helper is not used by current code.
+
+The only active cutoff / branch behavior is:
+
+```txt
+ROUND3_CONFIRM
+  Skip -> ADVANCE_PHASE
+  3rd Roll -> ROUND3_HOLD
+```
+
+Result actions are also gated:
+
+```txt
+Double Up enabled only when:
+  phase === RESULT
+  not tie
+  winners.length > 0
+  losers.length > 0
+```
+
+## Legacy / Temporary
+
+`hasAllHeld.ts` is a legacy unused helper. Do not document it as active cutoff behavior. If reintroduced, update reducer and UI gating together.
+
+---
+
+# 8. Result / Double Up Routing State
+
+## Severity
+
+HIGH
+
+## Files
+
+```txt
+features/game/components/GameScreen.tsx
+features/double-up/store.ts
+features/double-up/components/DoubleUpScreen.tsx
+features/double-up/hooks/useDoubleUpGame.ts
+app/doubleup/page.tsx
+```
+
+## Hidden Dependency
+
+Double Up data is transient Zustand state, not URL or persistent storage.
+
+```txt
+GameScreen RESULT modal
+  -> setDoubleUpData({ winnerIndexes, loserIndexes, score })
+  -> router.push("/doubleup")
+  -> DoubleUpScreen reads store
+```
+
+If `/doubleup` is opened directly or refreshed, store defaults are used:
+
+```txt
+winnerIndexes: []
+loserIndexes: []
+score: 0
+```
+
+## Route Name
+
+Current route is:
+
+```txt
+/doubleup
+```
+
+Older docs saying `/double-up` are deprecated.
+
+## Double Up Rules
+
+```txt
+choice HIGH -> success if value >= 4
+choice LOW  -> success if value <= 3
+success     -> currentScore doubles
+failure     -> currentScore stays as-is, winner/loser display swaps via isSuccess
 ```
 
 ---
 
-# Problem Type
+# 9. Settings / Query Param Dependency
 
-- runtime asset dependency
-- non-code dependency
+## Severity
 
----
+HIGH
 
-# Why Fragile
-
-dice-box runtime asset依存。
-
----
-
-# Hidden Dependency
-
-以下必要：
+## Files
 
 ```txt
-ammo/
-themes/
+app/page.tsx
+app/settings/page.tsx
+app/game/page.tsx
+features/game/components/GameScreen.tsx
+features/game/utils/calculateScore.ts
 ```
 
----
+## Current Behavior
 
-# Dangerous Cleanup
+`/` renders `SettingsPage`.
 
-Codexが：
+```ts
+import SettingsPage from "./settings/page";
+```
+
+`SettingsPage` validates:
 
 ```txt
-unused asset
+players: at least 2, non-empty, unique
+twoPairRate: integer string, > 0
 ```
 
-判定で削除しやすい。
-
----
-
-# Removing Causes
-
-- dice render failure
-- physics init failure
-
----
-
-# Required Safeguards
-
-## Never Remove
+Then it routes to:
 
 ```txt
-public/assets/dice-box/
+/game?players=<JSON encoded string array>&twoPairRate=<integer>
 ```
+
+`app/game/page.tsx` parses these query params and passes them to `GameScreen`.
+
+## Hidden Dependency
+
+`calculateScore(hand, twoPairRate)` treats the configured `twoPairRate` as the value for `TWO_PAIR`, then derives base score:
+
+```txt
+baseScore = twoPairRate / 2
+score = baseScore * MULTIPLIERS[hand]
+```
+
+If `twoPairRate` is odd, other hand scores can become fractional. Current settings validation only requires integer input and `> 0`; it does not require even numbers.
+
+## Deprecated
+
+Older docs that describe fixed base score only are deprecated. Default still exists as fallback:
+
+```txt
+BASE_SCORE = 100
+default twoPairRate = 200
+```
+
+But normal flow gets the rate from settings.
 
 ---
 
-# 9. types/dice-box.d.ts
+# 10. CSS Import Dependency
+
+## Severity
+
+HIGH
+
+## Files
+
+```txt
+app/layout.tsx
+styles/globals.css
+app/globals.css
+```
+
+## Current Behavior
+
+`app/layout.tsx` imports:
+
+```ts
+import "../styles/globals.css";
+```
+
+`styles/globals.css` contains Tailwind v4 import:
+
+```css
+@import "tailwindcss";
+```
+
+The app uses Tailwind utility classes throughout Settings, Game, Double Up, and Dice components. Removing or moving this import without updating layout breaks styling.
+
+## Legacy / Deprecated
+
+`app/globals.css` exists and currently duplicates the CSS content, but it is not imported by `app/layout.tsx`. Treat it as legacy / unused until the layout import is intentionally changed.
+
+---
+
+# 11. Shared Component Boundary
 
 ## Severity
 
 MEDIUM
 
+## Files
+
+```txt
+shared/components/Dice/
+```
+
+## Current Behavior
+
+`shared/components/Dice/Dice2D.tsx` is used for visible static dice in Game and Double Up.
+
+`shared/components/Dice/Dice3D.tsx` is used through `DiceRollOverlay`.
+
+## Legacy / Deprecated
+
+`shared/components/Dice/index.tsx` exports:
+
+```ts
+export { Dice3D as Dice } from "./Dice3D";
+```
+
+Current feature code imports `Dice2D` directly and does not use this barrel export. Treat the barrel export as legacy and potentially misleading.
+
+## Boundary Rule
+
+Do not import game reducer, Zustand store, router, or feature-specific rules into `shared/components`. Shared dice components should remain generic UI / animation components.
+
 ---
 
-# Files
+# 12. Type Shim / Temporary Implementation
+
+## Severity
+
+MEDIUM
+
+## Files
 
 ```txt
 types/dice-box.d.ts
 ```
 
----
+## Why Exists
 
-# Problem Type
+The project uses a local declaration for `@3d-dice/dice-box`.
 
-- temporary type workaround
-- third-party typing shim
-
----
-
-# Why Fragile
-
-official typings不足。
-
----
-
-# Dangerous Cleanup
-
-AIが：
-
-```txt
-unused declaration
-```
-
-扱いで削除しやすい。
-
----
-
-# Removing Causes
-
-- TS compile error
-
----
-
-# Required Safeguards
-
-## Preserve
-
-temporary declare module。
-
----
-
-# 10. useEffect Initialization
-
-## Severity
-
-HIGH
-
----
-
-# Files
-
-```txt
-Dice3D.tsx
-GameScreen.tsx
-```
-
----
-
-# Problem Type
-
-- duplicated init
-- infinite render risk
-
----
-
-# Why Fragile
-
-AIが dependency array を勝手に修正しやすい。
-
----
-
-# Dangerous Refactor
+Current roll typing:
 
 ```ts
-useEffect(() => {
-}, [state])
+roll(
+  dice: DiceBoxRollDie[] | DiceBoxRollDie | string
+): Promise<DiceBoxRollResult[]>;
 ```
 
-化。
+This is aligned with current code using:
+
+```ts
+box.roll({
+  sides: 6,
+  qty: diceValues.length,
+})
+```
+
+## Required Safeguards
+
+- Do not delete as "unused"
+- Keep return type compatible with dice-box landed values
+- Update this shim whenever `Dice3D.tsx` changes dice-box call shape
 
 ---
 
-# Causes
-
-- duplicated DiceBox init
-- overlay infinite rerender
-- physics duplication
-
----
-
-# Required Safeguards
-
-## Preserve
-
-minimal dependency arrays。
-
----
-
-# 11. Temporary any Usage
+# 13. Unused / Legacy Dependencies and Files
 
 ## Severity
 
 LOW
 
----
+## Current Observations From Code Search
 
-# Files
-
-```txt
-Dice3D.tsx
-```
-
----
-
-# Problem Type
-
-- temporary unsafe typing
-
----
-
-# Why Exists
-
-dice-box typings不足。
-
----
-
-# Dangerous Cleanup
-
-Codexが：
-
-```ts
-useRef<any>
-```
-
-を無理に型付けして壊しやすい。
-
----
-
-# Required Safeguards
-
-## Current Policy
-
-temporary any 許容。
-
----
-
-# 12. Hydration-Sensitive Values
-
-## Severity
-
-HIGH
-
----
-
-# Problem Type
-
-- SSR/client mismatch
-
----
-
-# Fragile Values
-
-- Math.random()
-- disabled attr
-- dynamic animation state
-- mounted state
-
----
-
-# Dangerous Refactor
-
-render中 random。
-
----
-
-# Causes
-
-- hydration mismatch
-- UI desync
-
----
-
-# Required Safeguards
-
-## Never Use
-
-```ts
-Math.random()
-```
-
-inside render。
-
----
-
-# 13. Phase Timing Dependencies
-
-## Severity
-
-HIGH
-
----
-
-# Problem Type
-
-- implicit flow dependency
-
----
-
-# Hidden Dependencies
+`package.json` includes dependencies that are not imported by current source:
 
 ```txt
-ROLL
- ↓
-overlay
- ↓
-animation complete
- ↓
-phase advance
+framer-motion
+react-icons
 ```
 
----
+Do not remove them as part of docs-only work. If dependency cleanup is requested later, verify with `rg` and a build.
 
-# Why Fragile
+Legacy / currently unused files or symbols:
 
-現在 timing が implicit。
+```txt
+app/globals.css
+shared/components/Dice/index.tsx
+features/game/utils/hasAllHeld.ts
+GamePhase: JUDGE
+GamePhase: ADVANCE_PHASE
+GameAction: NEXT_PLAYER
+GamePlayer.hand
+GamePlayer.point
+```
 
----
-
-# Dangerous Cleanup
-
-AIが timeout整理しやすい。
-
----
-
-# Causes
-
-- phase skip
-- double phase
-- stuck overlay
+These should be treated as deprecated or temporary until intentionally removed or reactivated.
 
 ---
 
-# Required Safeguards
+# Recommended Validation After Changes
 
-## Preserve Timing Order
-
-animation complete 後のみ phase進行。
-
----
-
-# Recommended Global Rules for AI Agents
-
-## Always Preserve
-
-- phase names
-- mounted guard
-- dynamic import
-- reducer structure
-- shared boundary
-
----
-
-# Never Introduce
-
-- SSR-only logic
-- static DiceBox import
-- reducer side random
-- new phases
-- global mutable state
-
----
-
-# Recommended Validation After Any Change
-
-## 반드시確認
+Run at minimum:
 
 ```bash
-npm run dev
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
 
----
+Manual flows to verify:
 
-# Validate
+```txt
+Settings validation:
+  blank players
+  fewer than 2 players
+  duplicate players
+  blank / 0 / non-integer rate
 
-- Roll
-- Hold
-- Overlay
-- Hydration
-- Phase progression
-- RESULT到達
-- DoubleUp routing
-- Dice cleanup
+Game:
+  1st Roll -> auto ROUND1_HOLD without NEXT
+  2nd Roll -> WAITING_NEXT and buttons locked except NEXT
+  3rd Confirm -> Skip works for final player
+  3rd Roll -> values update after animation, then NEXT required
+  Result modal -> Double Up / Finish
+
+Double Up:
+  animation die value matches actual rolled value
+  HIGH/LOW success thresholds
+  Continue / Finish
 ```

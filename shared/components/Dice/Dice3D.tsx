@@ -16,6 +16,8 @@ type Props = {
   scale?: number;
 
   className?: string;
+
+  elementId?: string;
 };
 
 export const Dice3D = ({
@@ -23,6 +25,7 @@ export const Dice3D = ({
   onRollComplete,
   scale = 5,
   className = "",
+  elementId = "dice-box",
 }: Props) => {
 
   const containerRef =
@@ -64,7 +67,7 @@ export const Dice3D = ({
 
       const box =
         new DiceBox(
-          "#dice-box",
+          `#${elementId}`,
           {
             assetPath:
               "/assets/dice-box/",
@@ -113,12 +116,12 @@ export const Dice3D = ({
 
       diceBoxRef.current = null;
     };
-  }, [onRollComplete, scale, values]);
+  }, [elementId, onRollComplete, scale, values]);
 
   return (
 
     <div
-      id="dice-box"
+      id={elementId}
       ref={containerRef}
 
       className={`

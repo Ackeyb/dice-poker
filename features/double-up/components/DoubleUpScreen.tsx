@@ -331,12 +331,13 @@ export const DoubleUpScreen =
         open={isRollOverlayOpen}
         values={overlayValues}
         onComplete={completeRoll}
-        diceScale={10}
+        diceScale={20}
         diceClassName="
-          h-[520px]
+          h-[1040px]
+          max-h-[85vh]
         "
         panelClassName="
-          max-w-3xl
+          max-w-6xl
         "
       />
 

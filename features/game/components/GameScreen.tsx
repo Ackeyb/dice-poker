@@ -21,6 +21,9 @@ import {
   DiceRollOverlay,
 } from "@/shared/components/Dice/DiceRollOverlay";
 import {
+  DiceRollPreloader,
+} from "@/shared/components/Dice/DiceRollPreloader";
+import {
   useCallback,
   useEffect,
   useRef,
@@ -805,7 +808,20 @@ export const GameScreen = ({
         values={overlayValues}
 
         onComplete={completeRoll}
+
+        diceScale={15}
+
+        diceClassName="
+          h-[900px]
+          max-h-[85vh]
+        "
+
+        panelClassName="
+          max-w-6xl
+        "
       />
+
+      <DiceRollPreloader scale={15} />
 
     </main>
   );
