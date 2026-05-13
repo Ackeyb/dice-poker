@@ -69,6 +69,34 @@ const buildSettingsUrl = (
   return `/?${params.toString()}`;
 };
 
+const buildDoubleUpUrl = (
+  data: {
+    winnerIndexes: number[];
+    loserIndexes: number[];
+    score: number;
+    playerNames: string[];
+    twoPairRate: number;
+  }
+) => {
+  const params =
+    new URLSearchParams({
+      winners:
+        JSON.stringify(data.winnerIndexes),
+      losers:
+        JSON.stringify(data.loserIndexes),
+      score:
+        String(data.score),
+      players:
+        JSON.stringify(data.playerNames),
+      twoPairRate:
+        String(data.twoPairRate),
+      start:
+        String(Date.now()),
+    });
+
+  return `/doubleup?${params.toString()}`;
+};
+
 const getRoundNumber = (
   phase: string
 ) => {
@@ -115,6 +143,11 @@ export const GameScreen = ({
     setResultActionDismissed,
   ] = useState(false);
 
+  const [
+    showSkipRollConfirm,
+    setShowSkipRollConfirm,
+  ] = useState(false);
+
   const pendingRollPhaseRef =
     useRef<typeof state.phase | null>(
       null
@@ -139,6 +172,12 @@ export const GameScreen = ({
 
   const currentPlayerNames =
     state.players.map(player => player.name);
+
+  const getPlayerName = (
+    playerIndex: number
+  ) =>
+    currentPlayerNames[playerIndex] ??
+    `Player ${playerIndex + 1}`;
 
   const effectiveTwoPairRate =
     twoPairRate ?? DEFAULT_TWO_PAIR_RATE;
@@ -212,7 +251,7 @@ export const GameScreen = ({
       return;
     }
 
-    setDoubleUpData({
+    const doubleUpData = {
       winnerIndexes:
         winners.map(
           winner =>
@@ -228,9 +267,13 @@ export const GameScreen = ({
       score: resultScore,
       playerNames: currentPlayerNames,
       twoPairRate: effectiveTwoPairRate,
-    });
+    };
 
-    router.push("/doubleup");
+    setDoubleUpData(doubleUpData);
+
+    router.push(
+      buildDoubleUpUrl(doubleUpData)
+    );
   };
 
   const restartGame = () => {
@@ -375,6 +418,24 @@ export const GameScreen = ({
 
       return;
     }
+
+    if (
+      state.phase === "ROUND2_ROLL" ||
+      state.phase === "ROUND3_HOLD" ||
+      state.phase === "ROUND3_ROLL"
+    ) {
+      setShowSkipRollConfirm(true);
+
+      return;
+    }
+
+    dispatch({
+      type: "ADVANCE_PHASE",
+    });
+  };
+
+  const confirmSkipRoll = () => {
+    setShowSkipRollConfirm(false);
 
     dispatch({
       type: "ADVANCE_PHASE",
@@ -636,7 +697,9 @@ export const GameScreen = ({
                   "
                 >
                   <div className="text-sm text-zinc-500">
-                    Player {result.playerIndex + 1}
+                    {getPlayerName(
+                      result.playerIndex
+                    )}
                   </div>
                   <div
                     className="
@@ -789,6 +852,115 @@ export const GameScreen = ({
         </div>
       )}
 
+      {showSkipRollConfirm && (
+        <div
+          className="
+            fixed inset-0 z-50
+            flex items-center justify-center
+            bg-black/75
+            px-4
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-md
+              overflow-hidden
+              rounded-lg
+              border border-red-900
+              bg-zinc-950
+              text-zinc-100
+              shadow-2xl
+              shadow-red-950/40
+            "
+          >
+            <div
+              className="
+                border-b border-red-950
+                bg-gradient-to-r
+                from-red-950
+                via-zinc-900
+                to-zinc-950
+                p-5
+              "
+            >
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-400
+                "
+              >
+                Skip Roll
+              </div>
+
+              <h2
+                className="
+                  mt-2
+                  text-3xl
+                  font-black
+                  text-white
+                "
+              >
+                Continue without Roll?
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                現在の出目のまま次のフェーズへ進みます。
+              </p>
+            </div>
+
+            <div
+              className="
+                grid gap-3
+                p-5
+                sm:grid-cols-2
+              "
+            >
+              <button
+                type="button"
+                className="
+                  rounded
+                  bg-red-600
+                  px-5 py-4
+                  text-lg
+                  font-black
+                  text-white
+                  transition
+                  hover:bg-red-500
+                "
+                onClick={confirmSkipRoll}
+              >
+                Continue
+              </button>
+
+              <button
+                type="button"
+                className="
+                  rounded
+                  border border-zinc-700
+                  bg-zinc-900
+                  px-5 py-4
+                  text-lg
+                  font-black
+                  text-zinc-100
+                  transition
+                  hover:border-red-500
+                  hover:text-red-200
+                "
+                onClick={() => {
+                  setShowSkipRollConfirm(false);
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showResultActions && (
         <div
           className="
@@ -841,7 +1013,9 @@ export const GameScreen = ({
                 >
                   {(isTie ? results : winners)
                     .map(result =>
-                      `Player ${result.playerIndex + 1}`
+                      getPlayerName(
+                        result.playerIndex
+                      )
                     )
                     .join(", ")}
                 </div>
@@ -868,7 +1042,9 @@ export const GameScreen = ({
                   >
                     {losers
                       .map(result =>
-                        `Player ${result.playerIndex + 1}`
+                        getPlayerName(
+                          result.playerIndex
+                        )
                       )
                       .join(", ")}
                   </div>

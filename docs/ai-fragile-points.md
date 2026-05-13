@@ -557,7 +557,7 @@ app/game/page.tsx
 
 ## Hidden Dependency
 
-Double Up data is transient Zustand state, not URL or persistent storage.
+Deprecated: Double Up data used to be transient Zustand state only. Current code still writes Zustand, but also routes to `/doubleup` with URL params for winners, losers, score, playerNames, and twoPairRate.
 
 Current store fields:
 
@@ -580,10 +580,10 @@ GameScreen.startDoubleUp
        playerNames,
        twoPairRate
      })
-  -> router.push("/doubleup")
+  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&twoPairRate=...")
 ```
 
-If `/doubleup` is opened directly or refreshed, store defaults are used:
+If `/doubleup` is opened directly or refreshed, `DoubleUpScreen` first tries URL query params, then falls back to store defaults:
 
 ```txt
 winnerIndexes: []
@@ -592,6 +592,8 @@ score: 0
 playerNames: []
 twoPairRate: 0
 ```
+
+The Result popup and Double Up screen resolve display names through `playerNames[index] ?? Player n`.
 
 ## Replay / Settings Buttons
 
@@ -878,16 +880,20 @@ Game:
   TurnCutIn displays Round n and player turn
   1st Roll -> auto ROUND1_HOLD without NEXT
   2nd Roll -> WAITING_NEXT and buttons locked except NEXT
+  2nd Roll phase NEXT without Roll -> confirmation popup
   ROUND3_CONFIRM shows decision popup
   3rd final-player Skip
   3rd Roll -> values update after animation, then NEXT required
+  3rd Roll phase NEXT without Roll -> confirmation popup
   Result modal -> Double Up / Play Again / Settings
+  Result modal and Double Up use configured player names
   Play Again restarts with same players and rate
   Settings returns with players only
 
 Double Up:
   animation die value matches actual rolled value
   HIGH/LOW success thresholds
+  success / failure popups
   Continue / Finish
   FINISHED -> Play Again / Settings
 ```
@@ -929,14 +935,68 @@ Success popup:
   asks Continue / Finish
 ```
 
-When `status === "ROLLED" && !isSuccess`, the inline failure result remains and only Finish is shown.
+When `status === "ROLLED" && !isSuccess`, Double Up shows a failure popup.
+
+```txt
+Failure popup:
+  shows rolled die
+  shows Final Score
+  offers Finish
+```
 
 ## Fragile Points
 
 - `currentScore` is updated in `useDoubleUpGame.resolveRoll` before the success popup renders.
 - The success popup depends on `status === "ROLLED"` and `isSuccess === true`.
+- The failure popup depends on `status === "ROLLED"` and `isSuccess === false`.
 - Continue must call `handleContinue`; Finish must call `handleFinish`.
 - Do not reduce the selected High / Low styling to a subtle color change. It is a user-facing clarity requirement.
+
+---
+
+# Latest Update: Roll-Skip Confirm / Split Dice Overlay
+
+## Files
+
+```txt
+features/game/components/GameScreen.tsx
+shared/components/Dice/DiceRollOverlay.tsx
+features/double-up/components/DoubleUpScreen.tsx
+app/doubleup/page.tsx
+```
+
+## Current Behavior
+
+Pressing NEXT without rolling now asks for confirmation when the active phase can advance without a roll:
+
+```txt
+ROUND2_ROLL
+ROUND3_HOLD
+ROUND3_ROLL
+```
+
+Confirming dispatches `ADVANCE_PHASE`. Canceling closes the dialog and keeps the current phase.
+
+`ROUND1_ROLL` is not included because reducer `ADVANCE_PHASE` does not advance from that phase; 1st Roll still must roll before moving to HOLD.
+
+For multi-dice roll overlays, `DiceRollOverlay` renders one `Dice3D` canvas per die instead of placing all dice into one dice-box world. This is intentional to reduce visible overlap with large dice scales.
+
+```txt
+values.length === 1:
+  single Dice3D
+
+values.length > 1:
+  grid of DiceRollDie cells
+  each cell owns one Dice3D / canvas / dice-box elementId
+  completion waits until every die reports a value
+```
+
+## Fragile Points
+
+- `DiceRollOverlay` aggregates per-die completion by index. Do not call `onComplete` until `completedIndexesRef.size === values.length`.
+- Each split dice canvas needs a unique sanitized `elementId`; duplicate ids break dice-box mounting.
+- The split overlay reduces visible overlap but does not change dice-box physics internals.
+- `showSkipRollConfirm` is UI state only; confirmed skip uses normal reducer `ADVANCE_PHASE`.
 
 ---
 

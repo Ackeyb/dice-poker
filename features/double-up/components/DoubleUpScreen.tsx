@@ -18,12 +18,83 @@ import {
 
 import {
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 
 import {
   useCallback,
+  useMemo,
   useState,
 } from "react";
+
+const parseStringArrayParam = (
+  value: string | null
+) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed =
+      JSON.parse(value) as unknown;
+
+    if (
+      Array.isArray(parsed) &&
+      parsed.every(
+        item => typeof item === "string"
+      )
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const parseNumberArrayParam = (
+  value: string | null
+) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed =
+      JSON.parse(value) as unknown;
+
+    if (
+      Array.isArray(parsed) &&
+      parsed.every(
+        item =>
+          Number.isInteger(item) &&
+          item >= 0
+      )
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const parsePositiveIntegerParam = (
+  value: string | null
+) => {
+  if (!value || !/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const parsed =
+    Number(value);
+
+  return parsed > 0
+    ? parsed
+    : null;
+};
 
 const buildGameUrl = (
   playerNames: string[],
@@ -62,14 +133,87 @@ export const DoubleUpScreen =
   () => {
 
   const router = useRouter();
+  const searchParams =
+    useSearchParams();
 
   const {
-    winnerIndexes,
-    loserIndexes,
-    score,
-    playerNames,
-    twoPairRate,
+    winnerIndexes: storedWinnerIndexes,
+    loserIndexes: storedLoserIndexes,
+    score: storedScore,
+    playerNames: storedPlayerNames,
+    twoPairRate: storedTwoPairRate,
   } = useDoubleUpStore();
+
+  const queryWinnerIndexes =
+    useMemo(
+      () =>
+        parseNumberArrayParam(
+          searchParams.get("winners")
+        ),
+      [searchParams]
+    );
+
+  const queryLoserIndexes =
+    useMemo(
+      () =>
+        parseNumberArrayParam(
+          searchParams.get("losers")
+        ),
+      [searchParams]
+    );
+
+  const queryPlayerNames =
+    useMemo(
+      () =>
+        parseStringArrayParam(
+          searchParams.get("players")
+        ),
+      [searchParams]
+    );
+
+  const queryScore =
+    useMemo(
+      () =>
+        parsePositiveIntegerParam(
+          searchParams.get("score")
+        ),
+      [searchParams]
+    );
+
+  const queryTwoPairRate =
+    useMemo(
+      () =>
+        parsePositiveIntegerParam(
+          searchParams.get("twoPairRate")
+        ),
+      [searchParams]
+    );
+
+  const winnerIndexes =
+    queryWinnerIndexes ??
+    storedWinnerIndexes;
+
+  const loserIndexes =
+    queryLoserIndexes ??
+    storedLoserIndexes;
+
+  const playerNames =
+    queryPlayerNames ??
+    storedPlayerNames;
+
+  const score =
+    queryScore ??
+    storedScore;
+
+  const twoPairRate =
+    queryTwoPairRate ??
+    storedTwoPairRate;
+
+  const getPlayerName = (
+    playerIndex: number
+  ) =>
+    playerNames[playerIndex] ??
+    `Player ${playerIndex + 1}`;
 
   const {
 
@@ -158,7 +302,9 @@ export const DoubleUpScreen =
           Winners:
           {" "}
           {winnerIndexes
-            .map(i => i + 1)
+            .map(i =>
+              getPlayerName(i)
+            )
             .join(", ")}
         </div>
 
@@ -166,7 +312,9 @@ export const DoubleUpScreen =
           Losers:
           {" "}
           {loserIndexes
-            .map(i => i + 1)
+            .map(i =>
+              getPlayerName(i)
+            )
             .join(", ")}
         </div>
 
@@ -264,49 +412,124 @@ export const DoubleUpScreen =
       )}
 
       {status === "ROLLED" && !isSuccess && (
-        <div className="space-y-8">
-
-          <div className="flex justify-center">
-
-            {rolledValue && (
-              <Dice
-                value={rolledValue}
-                disabled
-                className="
-                  w-32 h-32
-                  text-6xl
-                  border-4
-                  border-red-700
-                  bg-red-50
-                  text-red-950
-                  opacity-100
-                  shadow-xl
-                "
-              />
-            )}
-
-          </div>
-
-          <div className="text-4xl font-bold">
-            Failure
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-
-            <button
+        <div
+          className="
+            fixed inset-0 z-50
+            flex items-center justify-center
+            bg-black/75
+            px-4
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-md
+              overflow-hidden
+              rounded-lg
+              border border-red-900
+              bg-red-950
+              text-red-50
+              shadow-2xl
+              shadow-red-950/50
+            "
+          >
+            <div
               className="
-                border border-red-200
-                px-8 py-4 rounded
-                text-xl font-bold
-                bg-red-700
+                border-b border-red-900
+                bg-gradient-to-r
+                from-red-950
+                via-red-900
+                to-red-950
+                p-5
               "
-              onClick={handleFinish}
             >
-              Finish
-            </button>
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-200
+                "
+              >
+                Double Up Failed
+              </div>
 
+              <h2
+                className="
+                  mt-2
+                  text-4xl
+                  font-black
+                  text-white
+                "
+              >
+                Failure
+              </h2>
+            </div>
+
+            <div className="space-y-5 p-5">
+              <div className="flex justify-center">
+                {rolledValue && (
+                  <Dice
+                    value={rolledValue}
+                    disabled
+                    className="
+                      h-28 w-28
+                      border-4
+                      border-red-200
+                      bg-red-50
+                      text-6xl
+                      text-red-950
+                      opacity-100
+                      shadow-xl
+                    "
+                  />
+                )}
+              </div>
+
+              <div
+                className="
+                  rounded
+                  border border-red-800
+                  bg-red-900
+                  p-4
+                  text-center
+                "
+              >
+                <div className="text-sm text-red-200">
+                  Final Score
+                </div>
+                <div
+                  className="
+                    mt-1
+                    text-5xl
+                    font-black
+                    text-white
+                  "
+                >
+                  {currentScore}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="
+                  w-full
+                  rounded
+                  bg-red-600
+                  px-6 py-4
+                  text-lg
+                  font-black
+                  text-white
+                  transition
+                  hover:bg-red-500
+                "
+                onClick={handleFinish}
+              >
+                Finish
+              </button>
+            </div>
           </div>
-
         </div>
       )}
 
@@ -489,13 +712,15 @@ export const DoubleUpScreen =
             {isSuccess
               ? winnerIndexes
                   .map(
-                    i => i + 1
+                    i =>
+                      getPlayerName(i)
                   )
                   .join(", ")
 
               : loserIndexes
                   .map(
-                    i => i + 1
+                    i =>
+                      getPlayerName(i)
                   )
                   .join(", ")}
           </div>
@@ -507,13 +732,15 @@ export const DoubleUpScreen =
             {isSuccess
               ? loserIndexes
                   .map(
-                    i => i + 1
+                    i =>
+                      getPlayerName(i)
                   )
                   .join(", ")
 
               : winnerIndexes
                   .map(
-                    i => i + 1
+                    i =>
+                      getPlayerName(i)
                   )
                   .join(", ")}
           </div>

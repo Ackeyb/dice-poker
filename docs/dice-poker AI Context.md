@@ -474,10 +474,10 @@ GameScreen.startDoubleUp
        playerNames,
        twoPairRate
      })
-  -> router.push("/doubleup")
+  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&twoPairRate=...")
 ```
 
-Direct refresh/open of `/doubleup` uses default store values:
+Direct refresh/open of `/doubleup` first reads URL query params, then falls back to default store values:
 
 ```txt
 winnerIndexes: []
@@ -486,6 +486,8 @@ score: 0
 playerNames: []
 twoPairRate: 0
 ```
+
+Deprecated: older docs saying Double Up routing is Zustand-only are no longer complete. Zustand is still written, but URL params are now also part of the handoff.
 
 Double Up game logic:
 
@@ -498,6 +500,8 @@ Finish moves status to FINISHED
 ```
 
 Double Up roll also uses `DiceRollOverlay`; actual value comes from dice-box animation result.
+
+For multiple dice, `DiceRollOverlay` intentionally splits rendering into one `Dice3D` canvas per die to reduce visual overlap. Single-die Double Up keeps the single `Dice3D` path.
 
 Double Up FINISHED screen provides:
 
@@ -618,14 +622,19 @@ Settings receives players query and leaves rate blank
 TurnCutIn displays Round n then player turn
 1st Roll -> HOLD without NEXT
 2nd Roll -> NEXT required after animation
+2nd Roll phase NEXT without Roll -> confirmation popup
 ROUND3_CONFIRM opens decision popup
 3rd final-player Skip
 3rd Roll -> NEXT required after animation
+3rd Roll phase NEXT without Roll -> confirmation popup
 animation dice values match actual stored/displayed values
+multi-dice overlay keeps dice visually separated
 Result modal Double Up / Play Again / Settings
+Result modal and Double Up use configured player names
 Play Again restarts same players and same rate
 Settings keeps player names only
 Double Up HIGH/LOW animation and result value synchronization
+Double Up success and failure both render popups
 Double Up FINISHED Play Again / Settings
 ```
 
@@ -657,11 +666,48 @@ After a failed roll:
 
 ```txt
 status === ROLLED && !isSuccess
-  -> inline failure result
-  -> Finish only
+  -> failure popup
+  -> rolled die is shown
+  -> Final Score is shown
+  -> Finish is offered
 ```
 
 `currentScore` is already doubled by `useDoubleUpGame.resolveRoll` before the success popup renders.
+
+---
+
+# Latest Update: Roll-Skip Confirm / Split Dice Overlay
+
+GameScreen now asks before advancing from a rollable phase without rolling.
+
+```txt
+NEXT without Roll:
+  ROUND2_ROLL -> confirmation popup
+  ROUND3_HOLD -> confirmation popup
+  ROUND3_ROLL -> confirmation popup
+
+Confirm:
+  dispatch ADVANCE_PHASE
+
+Back:
+  close popup and keep phase
+```
+
+`ROUND1_ROLL` is intentionally excluded because reducer `ADVANCE_PHASE` does not progress from `ROUND1_ROLL`.
+
+`DiceRollOverlay` now has two render paths:
+
+```txt
+values.length === 1:
+  one Dice3D
+
+values.length > 1:
+  one DiceRollDie per value
+  each DiceRollDie owns a unique dice-box elementId
+  aggregate results by original index
+```
+
+This is a UI-level overlap reduction. It does not alter `@3d-dice/dice-box` physics.
 
 ---
 
