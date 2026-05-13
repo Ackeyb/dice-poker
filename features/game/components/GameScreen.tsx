@@ -24,6 +24,9 @@ import {
   DiceRollPreloader,
 } from "@/shared/components/Dice/DiceRollPreloader";
 import {
+  TurnCutIn,
+} from "./TurnCutIn";
+import {
   useCallback,
   useEffect,
   useRef,
@@ -33,6 +36,55 @@ import {
 type Props = {
   playerNames?: string[];
   twoPairRate?: number;
+};
+
+const DEFAULT_TWO_PAIR_RATE = 200;
+
+const buildGameUrl = (
+  playerNames: string[],
+  twoPairRate: number
+) => {
+  const params =
+    new URLSearchParams({
+      players:
+        JSON.stringify(playerNames),
+      twoPairRate:
+        String(twoPairRate),
+      restart:
+        String(Date.now()),
+    });
+
+  return `/game?${params.toString()}`;
+};
+
+const buildSettingsUrl = (
+  playerNames: string[]
+) => {
+  const params =
+    new URLSearchParams({
+      players:
+        JSON.stringify(playerNames),
+    });
+
+  return `/?${params.toString()}`;
+};
+
+const getRoundNumber = (
+  phase: string
+) => {
+  if (phase.startsWith("ROUND1")) {
+    return 1;
+  }
+
+  if (phase.startsWith("ROUND2")) {
+    return 2;
+  }
+
+  if (phase.startsWith("ROUND3")) {
+    return 3;
+  }
+
+  return null;
 };
 
 export const GameScreen = ({
@@ -84,6 +136,18 @@ export const GameScreen = ({
 
   const currentPlayer =
     state.players[state.currentPlayerIndex];
+
+  const currentPlayerNames =
+    state.players.map(player => player.name);
+
+  const effectiveTwoPairRate =
+    twoPairRate ?? DEFAULT_TWO_PAIR_RATE;
+
+  const roundNumber =
+    getRoundNumber(state.phase);
+
+  const cutInTriggerKey =
+    `${roundNumber}-${state.currentPlayerIndex}`;
   
   const results = getPlayerResults(
   state.players
@@ -117,7 +181,7 @@ export const GameScreen = ({
     winners.length > 0
       ? calculateScore(
           winners[0].hand,
-          twoPairRate
+          effectiveTwoPairRate
         )
       : 0;
 
@@ -162,9 +226,26 @@ export const GameScreen = ({
         ),
 
       score: resultScore,
+      playerNames: currentPlayerNames,
+      twoPairRate: effectiveTwoPairRate,
     });
 
     router.push("/doubleup");
+  };
+
+  const restartGame = () => {
+    router.push(
+      buildGameUrl(
+        currentPlayerNames,
+        effectiveTwoPairRate
+      )
+    );
+  };
+
+  const backToSettings = () => {
+    router.push(
+      buildSettingsUrl(currentPlayerNames)
+    );
   };
 
   const handleRoll = () => {
@@ -516,78 +597,6 @@ export const GameScreen = ({
             </button>
           </div>
 
-          {isRound3Confirm && (
-            <div
-              className="
-                mt-3
-                flex flex-wrap gap-3
-              "
-            >
-              <button
-                className="
-                  rounded
-                  bg-red-600
-                  px-5 py-3
-                  font-bold
-                  text-white
-                  transition
-                  hover:bg-red-500
-                "
-                disabled={
-                  isAnimationLocked ||
-                  isWaitingNext
-                }
-                onClick={() => {
-                  if (
-                    isAnimationLocked ||
-                    isWaitingNext
-                  ) {
-                    return;
-                  }
-
-                  dispatch({
-                    type: "SET_PHASE",
-                    payload: {
-                      phase: "ROUND3_HOLD",
-                    },
-                  });
-                }}
-              >
-                3rd Roll
-              </button>
-
-              <button
-                className="
-                  rounded
-                  border border-zinc-700
-                  bg-zinc-950
-                  px-5 py-3
-                  font-bold
-                  text-zinc-100
-                  transition
-                  hover:border-red-500
-                "
-                disabled={
-                  isAnimationLocked ||
-                  isWaitingNext
-                }
-                onClick={() => {
-                  if (
-                    isAnimationLocked ||
-                    isWaitingNext
-                  ) {
-                    return;
-                  }
-
-                  dispatch({
-                    type: "ADVANCE_PHASE",
-                  });
-                }}
-              >
-                Skip
-              </button>
-            </div>
-          )}
         </section>
 
         {state.phase === "RESULT" && (
@@ -652,7 +661,7 @@ export const GameScreen = ({
                     {" "}
                     {calculateScore(
                       result.hand,
-                      twoPairRate
+                      effectiveTwoPairRate
                     )}
                   </div>
                 </div>
@@ -661,6 +670,124 @@ export const GameScreen = ({
           </section>
         )}
       </div>
+
+      {isRound3Confirm && (
+        <div
+          className="
+            fixed inset-0 z-50
+            flex items-center justify-center
+            bg-black/75
+            px-4
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-md
+              overflow-hidden
+              rounded-lg
+              border border-red-900
+              bg-zinc-950
+              text-zinc-100
+              shadow-2xl
+              shadow-red-950/40
+            "
+          >
+            <div
+              className="
+                border-b border-red-950
+                bg-gradient-to-r
+                from-red-950
+                via-zinc-900
+                to-zinc-950
+                p-5
+              "
+            >
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-400
+                "
+              >
+                Round 3 Decision
+              </div>
+
+              <h2
+                className="
+                  mt-2
+                  text-3xl
+                  font-black
+                  text-white
+                "
+              >
+                {currentPlayer.name}のターン
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                3rd ROLLするか、SKIPして勝負します。
+              </p>
+            </div>
+
+            <div
+              className="
+                grid gap-3
+                p-5
+                sm:grid-cols-2
+              "
+            >
+              <button
+                type="button"
+                className="
+                  rounded
+                  bg-red-600
+                  px-5 py-4
+                  text-lg
+                  font-black
+                  text-white
+                  transition
+                  hover:bg-red-500
+                "
+                onClick={() => {
+                  dispatch({
+                    type: "SET_PHASE",
+                    payload: {
+                      phase: "ROUND3_HOLD",
+                    },
+                  });
+                }}
+              >
+                3rd Roll
+              </button>
+
+              <button
+                type="button"
+                className="
+                  rounded
+                  border border-zinc-700
+                  bg-zinc-900
+                  px-5 py-4
+                  text-lg
+                  font-black
+                  text-zinc-100
+                  transition
+                  hover:border-red-500
+                  hover:text-red-200
+                "
+                onClick={() => {
+                  dispatch({
+                    type: "ADVANCE_PHASE",
+                  });
+                }}
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showResultActions && (
         <div
@@ -752,8 +879,8 @@ export const GameScreen = ({
             <div
               className="
                 mt-5
-                flex flex-col gap-3
-                sm:flex-row
+                grid gap-3
+                sm:grid-cols-2
               "
             >
               <button
@@ -761,7 +888,6 @@ export const GameScreen = ({
                 disabled={!canStartDoubleUp}
                 onClick={startDoubleUp}
                 className={`
-                  flex-1
                   rounded
                   bg-red-600
                   px-5 py-3
@@ -778,12 +904,29 @@ export const GameScreen = ({
 
               <button
                 type="button"
+                onClick={restartGame}
+                className="
+                  rounded
+                  border border-red-700
+                  bg-red-950
+                  px-5 py-3
+                  font-bold
+                  text-red-100
+                  transition
+                  hover:border-red-400
+                "
+              >
+                Play Again
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setResultActionDismissed(true);
-                  router.push("/");
+                  backToSettings();
                 }}
                 className="
-                  flex-1
+                  sm:col-span-2
                   rounded
                   border border-zinc-700
                   bg-zinc-950
@@ -794,7 +937,7 @@ export const GameScreen = ({
                   hover:border-red-500
                 "
               >
-                Finish
+                Settings
               </button>
             </div>
           </div>
@@ -822,6 +965,12 @@ export const GameScreen = ({
       />
 
       <DiceRollPreloader scale={15} />
+
+      <TurnCutIn
+        roundNumber={roundNumber}
+        playerName={currentPlayer.name}
+        triggerKey={cutInTriggerKey}
+      />
 
     </main>
   );

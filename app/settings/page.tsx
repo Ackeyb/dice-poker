@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import { calculateScore } from "@/features/game/utils/calculateScore";
 import { MULTIPLIERS } from "@/features/game/constants/multipliers";
 import { HandRank } from "@/features/game/types/hand";
@@ -83,6 +86,52 @@ export default function SettingsPage() {
 
   const numericTwoPairRate =
     Number(twoPairRate);
+
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const playersParam =
+      params.get("players");
+
+    if (!playersParam) {
+      return;
+    }
+
+    try {
+      const parsed =
+        JSON.parse(playersParam) as unknown;
+
+      if (
+        Array.isArray(parsed) &&
+        parsed.every(
+          player => typeof player === "string"
+        )
+      ) {
+        const nextPlayers =
+          parsed.map(player => player.trim());
+
+        const id =
+          setTimeout(() => {
+            setPlayers(nextPlayers);
+            setPlayerCount(
+              Math.max(
+                nextPlayers.length,
+                MIN_PLAYERS
+              )
+            );
+          }, 0);
+
+        return () => {
+          clearTimeout(id);
+        };
+      }
+    } catch {
+      // Invalid query params should leave settings blank.
+    }
+  }, []);
 
   const changePlayerCount = (
     count: number

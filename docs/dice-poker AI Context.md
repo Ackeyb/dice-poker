@@ -4,7 +4,7 @@
 
 このファイルは、現在のコードベースを読む AI エージェント向けの実装コンテキストである。内容は実コードに基づく。
 
-関連する詳細な危険箇所は `docs/ai-fragile-points.md` を参照。
+詳細な危険箇所は `docs/ai-fragile-points.md` を参照。
 
 ---
 
@@ -21,6 +21,7 @@ app/
 features/
   game/
     components/GameScreen.tsx
+    components/TurnCutIn.tsx
     hooks/useGameEngine.ts
     reducer/
     utils/
@@ -34,6 +35,10 @@ features/
 
 shared/
   components/Dice/
+    Dice2D.tsx
+    Dice3D.tsx
+    DiceRollOverlay.tsx
+    DiceRollPreloader.tsx
 
 styles/
   globals.css
@@ -100,6 +105,16 @@ Start routes to:
 
 The rate input uses `type="text"` and `inputMode="numeric"` so only integer-like strings are accepted while avoiding layout issues with wider values.
 
+Settings can also receive:
+
+```txt
+/?players=<JSON encoded string array>
+```
+
+This is used by the Settings return buttons. Only player names are restored; rate remains blank by design.
+
+The restoration is done in a client `useEffect` using `window.location.search` and a `setTimeout(..., 0)` to avoid synchronous setState inside the effect.
+
 ---
 
 # Game Initialization
@@ -136,6 +151,20 @@ useReducer(
 ```
 
 This means initial player names are captured by the reducer initializer. Later prop changes do not reset state.
+
+To restart with the same players and same rate, replay URLs include:
+
+```txt
+restart=Date.now()
+```
+
+`app/game/page.tsx` renders:
+
+```tsx
+<GameScreen key={searchParams.toString()} ... />
+```
+
+This forces a fresh `GameScreen` instance when the query string changes.
 
 ---
 
@@ -177,6 +206,17 @@ point
 
 `hand` and `point` are initialized but not actively used for result calculation. Results are derived from dice values with `getPlayerResults(players)`.
 
+Player status is derived from:
+
+```txt
+currentPlayerIndex
+phase
+animationState
+dice[].held
+```
+
+There is no explicit per-player status field.
+
 ---
 
 # Game Progression
@@ -185,6 +225,7 @@ Current active phase flow:
 
 ```txt
 ROUND1_ROLL
+  TurnCutIn displays Round 1 -> player turn
   Roll
   dice animation returns landed values
   ROLL_DICE
@@ -196,6 +237,7 @@ ROUND1_HOLD
   last player NEXT advances to ROUND2_ROLL
 
 ROUND2_ROLL
+  TurnCutIn displays when round/player changes
   Roll
   dice animation returns landed values
   ROLL_DICE
@@ -203,8 +245,9 @@ ROUND2_ROLL
   NEXT advances player / round
 
 ROUND3_CONFIRM
-  3rd Roll button -> SET_PHASE ROUND3_HOLD
-  Skip button -> ADVANCE_PHASE
+  popup asks 3rd Roll or Skip
+  3rd Roll -> SET_PHASE ROUND3_HOLD
+  Skip -> ADVANCE_PHASE
 
 ROUND3_HOLD
   Hold allowed
@@ -215,10 +258,57 @@ ROUND3_HOLD
   NEXT advances player / result
 
 RESULT
-  result modal asks Double Up or Finish
+  result modal asks Double Up / Play Again / Settings
 ```
 
 Important: 1st Roll is the only roll that does not require NEXT after animation. 2nd and 3rd roll require NEXT after values are updated.
+
+---
+
+# Round / Turn Cut-In
+
+`features/game/components/TurnCutIn.tsx` renders cut-ins.
+
+Inputs:
+
+```txt
+roundNumber: number | null
+playerName: string
+triggerKey: string
+```
+
+`GameScreen` derives:
+
+```txt
+roundNumber = getRoundNumber(state.phase)
+triggerKey = `${roundNumber}-${state.currentPlayerIndex}`
+```
+
+Sequence:
+
+```txt
+0ms    -> Round n
+1150ms -> <playerName>のターン
+2450ms -> hide
+```
+
+The overlay uses `pointer-events-none`, so it should not block controls.
+
+Animation CSS is global in `styles/globals.css`:
+
+```txt
+.cutin-backdrop
+.cutin-blade
+.cutin-blade-top
+.cutin-blade-bottom
+.cutin-flash
+.cutin-content
+.cutin-subtitle
+.cutin-title
+@keyframes cutin-*
+```
+
+Do not move this back to `style jsx` without verifying `npm run build`; Turbopack previously failed on the scoped style path.
 
 ---
 
@@ -272,6 +362,8 @@ Do not generate random values separately in reducer or UI. The actual roll resul
 
 Held dice are preserved by index. Only unheld dice are replaced by the returned roll values.
 
+`GameScreen` renders `DiceRollPreloader scale={15}` to preload dice-box on game screen entry.
+
 ---
 
 # Cutoff Logic
@@ -284,8 +376,8 @@ Active cutoff / branch points:
 
 ```txt
 ROUND3_CONFIRM:
-  Skip -> ADVANCE_PHASE
-  3rd Roll -> ROUND3_HOLD
+  popup Skip -> ADVANCE_PHASE
+  popup 3rd Roll -> ROUND3_HOLD
 
 RESULT:
   Double Up allowed only when not tie and both winners / losers exist
@@ -301,7 +393,7 @@ losers.length === results.length
 
 ---
 
-# Result and Score
+# Result, Replay, and Score
 
 Results are calculated from dice values at render time:
 
@@ -335,6 +427,16 @@ default twoPairRate = 200
 
 Because settings only require integer input, odd `twoPairRate` values can produce fractional scores for other hands.
 
+Game result modal currently provides:
+
+```txt
+Double Up
+Play Again
+Settings
+```
+
+`Play Again` keeps players and rate. `Settings` keeps player names only.
+
 ---
 
 # Double Up
@@ -345,19 +447,27 @@ Double Up uses Zustand for transient routing state.
 features/double-up/store.ts
 ```
 
-Data written before route push:
+Current store data:
 
 ```txt
 winnerIndexes
 loserIndexes
 score
+playerNames
+twoPairRate
 ```
 
 Route handoff:
 
 ```txt
 GameScreen.startDoubleUp
-  -> setDoubleUpData(...)
+  -> setDoubleUpData({
+       winnerIndexes,
+       loserIndexes,
+       score,
+       playerNames,
+       twoPairRate
+     })
   -> router.push("/doubleup")
 ```
 
@@ -367,6 +477,8 @@ Direct refresh/open of `/doubleup` uses default store values:
 winnerIndexes: []
 loserIndexes: []
 score: 0
+playerNames: []
+twoPairRate: 0
 ```
 
 Double Up game logic:
@@ -380,6 +492,17 @@ Finish moves status to FINISHED
 ```
 
 Double Up roll also uses `DiceRollOverlay`; actual value comes from dice-box animation result.
+
+Double Up FINISHED screen provides:
+
+```txt
+Play Again:
+  enabled when playerNames.length >= 2 and twoPairRate > 0
+
+Settings:
+  routes to /?players=...
+  if no playerNames, routes to /
+```
 
 ---
 
@@ -403,9 +526,9 @@ import "../styles/globals.css";
 @import "tailwindcss";
 ```
 
-Most visual implementation uses Tailwind utility classes. Removing this import or assuming `app/globals.css` is active will break styling.
+It also contains `TurnCutIn` animation CSS. Most visual implementation uses Tailwind utility classes. Removing this import or assuming `app/globals.css` is active will break styling and cut-in animations.
 
-`app/globals.css` currently duplicates the global CSS but is not imported. Treat it as deprecated / legacy until intentionally switched.
+`app/globals.css` currently duplicates baseline global CSS but is not imported. Treat it as deprecated / legacy until intentionally switched.
 
 ---
 
@@ -416,13 +539,26 @@ Dice3D:
   dynamic import of @3d-dice/dice-box
   browser-only runtime
   public/assets/dice-box/
-  "#dice-box" selector
+  elementId selector
+
+DiceRollPreloader:
+  hidden offscreen warm-up
+  requires distinct elementId
 
 Game progression:
   pendingRollPhaseRef
   pendingRollIndexesRef
   animationState WAITING_NEXT
   reducer ADVANCE_PHASE switch
+  ROUND3_CONFIRM popup
+
+Replay:
+  restart query
+  GameScreen key={searchParams.toString()}
+
+TurnCutIn:
+  triggerKey = roundNumber-currentPlayerIndex
+  global .cutin-* CSS
 
 Settings -> Game:
   query param "players"
@@ -430,6 +566,7 @@ Settings -> Game:
 
 Game -> DoubleUp:
   Zustand store must be set before router.push("/doubleup")
+  store includes playerNames and twoPairRate for replay
 
 CSS:
   app/layout.tsx imports ../styles/globals.css
@@ -445,8 +582,8 @@ Types:
 Keep these documented as deprecated instead of deleting references silently:
 
 ```txt
-docs/dice-poker AI Context.md previously contained TASK-008 content only
-app/globals.css duplicates global CSS but is not imported
+docs/dice-poker AI Context.md originally contained TASK-008 content only
+app/globals.css duplicates baseline global CSS but is not imported
 shared/components/Dice/index.tsx exports Dice3D as Dice but current code imports Dice2D directly
 features/game/utils/hasAllHeld.ts is unused
 GamePhase includes ROUND3_ROLL / JUDGE / ADVANCE_PHASE but current UI flow does not use them as active phases
@@ -471,11 +608,17 @@ Manual verification targets:
 
 ```txt
 Settings validation and mobile layout
+Settings receives players query and leaves rate blank
+TurnCutIn displays Round n then player turn
 1st Roll -> HOLD without NEXT
 2nd Roll -> NEXT required after animation
+ROUND3_CONFIRM opens decision popup
 3rd final-player Skip
 3rd Roll -> NEXT required after animation
 animation dice values match actual stored/displayed values
-Result modal Double Up / Finish
+Result modal Double Up / Play Again / Settings
+Play Again restarts same players and same rate
+Settings keeps player names only
 Double Up HIGH/LOW animation and result value synchronization
+Double Up FINISHED Play Again / Settings
 ```

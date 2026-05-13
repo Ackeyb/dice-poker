@@ -17,17 +17,58 @@ import {
 } from "@/shared/components/Dice/DiceRollOverlay";
 
 import {
+  useRouter,
+} from "next/navigation";
+
+import {
   useCallback,
   useState,
 } from "react";
 
+const buildGameUrl = (
+  playerNames: string[],
+  twoPairRate: number
+) => {
+  const params =
+    new URLSearchParams({
+      players:
+        JSON.stringify(playerNames),
+      twoPairRate:
+        String(twoPairRate),
+      restart:
+        String(Date.now()),
+    });
+
+  return `/game?${params.toString()}`;
+};
+
+const buildSettingsUrl = (
+  playerNames: string[]
+) => {
+  if (playerNames.length === 0) {
+    return "/";
+  }
+
+  const params =
+    new URLSearchParams({
+      players:
+        JSON.stringify(playerNames),
+    });
+
+  return `/?${params.toString()}`;
+};
+
 export const DoubleUpScreen =
   () => {
+
+  const router = useRouter();
 
   const {
     winnerIndexes,
     loserIndexes,
     score,
+    playerNames,
+    twoPairRate,
   } = useDoubleUpStore();
 
   const {
@@ -64,6 +105,10 @@ export const DoubleUpScreen =
 
   const isRolling =
     isRollOverlayOpen;
+
+  const canRestart =
+    playerNames.length >= 2 &&
+    twoPairRate > 0;
 
   const handleRoll = () => {
     if (!choice || isRolling) {
@@ -321,6 +366,65 @@ export const DoubleUpScreen =
                     i => i + 1
                   )
                   .join(", ")}
+          </div>
+
+          <div
+            className="
+              flex flex-col gap-3
+              pt-3
+              sm:flex-row
+            "
+          >
+            <button
+              type="button"
+              disabled={!canRestart}
+              onClick={() => {
+                if (!canRestart) {
+                  return;
+                }
+
+                router.push(
+                  buildGameUrl(
+                    playerNames,
+                    twoPairRate
+                  )
+                );
+              }}
+              className={`
+                rounded
+                bg-red-600
+                px-6 py-3
+                font-bold
+                text-white
+                transition
+                hover:bg-red-500
+
+                ${!canRestart ? "opacity-50" : ""}
+              `}
+            >
+              Play Again
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                router.push(
+                  buildSettingsUrl(playerNames)
+                );
+              }}
+              className="
+                rounded
+                border border-red-300
+                bg-red-950
+                px-6 py-3
+                font-bold
+                text-red-50
+                transition
+                hover:border-white
+              "
+            >
+              Settings
+            </button>
           </div>
 
         </div>

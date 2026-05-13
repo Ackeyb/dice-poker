@@ -55,6 +55,7 @@ function GamePageInner() {
 
   return (
     <GameScreen
+      key={searchParams.toString()}
       playerNames={playerNames}
       twoPairRate={twoPairRate}
     />

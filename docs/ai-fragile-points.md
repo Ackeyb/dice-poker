@@ -2,9 +2,9 @@
 
 # Fragile / Dangerous Areas
 
-このファイルは、現在の実コードベースを前提に、AIエージェントが壊しやすい箇所、hidden dependency、legacy / temporary implementation を整理する。
+このドキュメントは、現在の実コードベースを前提に、AI エージェントが壊しやすい箇所、hidden dependency、legacy / temporary implementation を整理する。
 
-最終確認時点の主な対象:
+確認対象:
 
 ```txt
 app/
@@ -28,13 +28,16 @@ CRITICAL
 ```txt
 shared/components/Dice/Dice3D.tsx
 shared/components/Dice/DiceRollOverlay.tsx
+shared/components/Dice/DiceRollPreloader.tsx
 types/dice-box.d.ts
 public/assets/dice-box/
 ```
 
 ## Why Fragile
 
-`@3d-dice/dice-box` は browser / WebGL / canvas / physics runtime 前提で、SSR 安全ではない。`Dice3D.tsx` は `useEffect` 内で dynamic import している。
+`@3d-dice/dice-box` は browser / WebGL / canvas / physics runtime 前提で、SSR 安全ではない。
+
+`Dice3D.tsx` は `useEffect` 内で dynamic import している。
 
 ```ts
 const diceBoxModule =
@@ -43,14 +46,14 @@ const diceBoxModule =
   );
 ```
 
-module scope で static import すると SSR / hydration / build のどこかで壊れる可能性が高い。
+module scope で static import すると SSR / hydration / build で壊れる可能性が高い。
 
 ## Hidden Dependency
 
 `DiceBox` constructor は以下に依存している。
 
 ```txt
-selector: "#dice-box"
+selector: `#${elementId}`
 assetPath: "/assets/dice-box/"
 public/assets/dice-box/ammo/
 public/assets/dice-box/themes/
@@ -73,12 +76,29 @@ GameScreen / DoubleUpScreen
 
 重要: `values` は最終出目ではなく「振るダイス数」を表す placeholder として使われる。実際の出目は `box.roll(...)` の戻り値。
 
+## Preload Behavior
+
+`GameScreen` は `DiceRollPreloader` を常時 render して、ゲーム画面表示時に dice-box を画面外で一度初期化する。
+
+```txt
+DiceRollPreloader
+  -> elementId="dice-box-preload"
+  -> values={[1]}
+  -> scale={15}
+  -> onRollComplete -> setReady(true)
+  -> ready後は null
+```
+
+`Dice3D` の `elementId` prop は、通常 overlay の `dice-box` と preload 用 `dice-box-preload` の DOM id 衝突を避けるために必要。
+
 ## Required Safeguards
 
 - `use client` を維持する
 - dynamic import を維持する
 - `assetPath: "/assets/dice-box/"` を維持する
 - `public/assets/dice-box/` を削除しない
+- `elementId` を削除しない
+- `DiceRollPreloader` を「見えないから不要」と判断して削除しない
 - `onRollComplete(values: number[])` の値を親側の結果更新に使う
 - `container.innerHTML = ""` と `box.clear?.()` の cleanup を残す
 
@@ -118,9 +138,21 @@ ROLL button
 
 `DiceRollOverlay` の `setTimeout(..., 1500)` は、出目が見えた後に状態更新するための意図的な delay。不要そうに見えても削除しない。
 
-## Cleanup Risk
+## Current Sizes
 
-`completeTimerRef` や cleanup effect は、unmount 後の callback 実行を避けるために必要。
+```txt
+Game overlay:
+  diceScale={15}
+  diceClassName="h-[900px] max-h-[85vh]"
+  panelClassName="max-w-6xl"
+
+Double Up overlay:
+  diceScale={20}
+  diceClassName="h-[1040px] max-h-[85vh]"
+  panelClassName="max-w-6xl"
+```
+
+サイズ指定は user-facing requirement。安易に default scale に戻さない。
 
 ## Required Safeguards
 
@@ -146,6 +178,7 @@ features/game/reducer/gameInitialState.ts
 features/game/types/game.ts
 features/game/types/phase.ts
 features/game/types/reducer.ts
+app/game/page.tsx
 ```
 
 ## Current State Shape
@@ -164,7 +197,19 @@ GameState
 
 ## Hidden Dependency
 
-`useReducer(gameReducer, playerNames, createGameInitialState)` の lazy initializer により、初回 render 時の `playerNames` だけが初期化に使われる。`playerNames` prop が後から変わっても game state は再初期化されない。
+`useReducer(gameReducer, playerNames, createGameInitialState)` の lazy initializer により、初回 render 時の `playerNames` だけが初期化に使われる。
+
+同じ設定で再プレイすると通常は同じ URL / props になり state が残りやすい。そのため現在は以下が入っている。
+
+```txt
+buildGameUrl(...):
+  adds restart=Date.now()
+
+app/game/page.tsx:
+  <GameScreen key={searchParams.toString()} ... />
+```
+
+`restart` query と `key` は、同じプレイヤー / 同じレートで最初からやり直すための hidden dependency。
 
 ## Player Status Handling
 
@@ -184,6 +229,7 @@ dice[].held
 - reducer に side effect を入れない
 - `currentPlayerIndex` と `phase` の coupling を崩さない
 - player status を安易に新規 field 化しない
+- `restart` query と `GameScreen key` を削除しない
 - lazy initializer の挙動を理解せずに prop-driven reset を入れない
 
 ---
@@ -200,6 +246,7 @@ CRITICAL
 features/game/components/GameScreen.tsx
 features/game/reducer/gameReducer.ts
 features/game/types/phase.ts
+features/game/components/TurnCutIn.tsx
 ```
 
 ## Current Active Flow
@@ -208,6 +255,7 @@ features/game/types/phase.ts
 
 ```txt
 ROUND1_ROLL
+  TurnCutIn: Round 1 -> player turn
   Roll
   animation result applies
   automatically SET_PHASE -> ROUND1_HOLD
@@ -218,6 +266,7 @@ ROUND1_HOLD
   last player NEXT -> ROUND2_ROLL
 
 ROUND2_ROLL
+  TurnCutIn fires when round/player key changes
   Roll
   animation result applies
   animationState -> WAITING_NEXT
@@ -225,8 +274,9 @@ ROUND2_ROLL
   last player NEXT -> ROUND3_CONFIRM
 
 ROUND3_CONFIRM
-  "3rd Roll" -> SET_PHASE ROUND3_HOLD
-  "Skip" -> ADVANCE_PHASE
+  central popup asks 3rd Roll or Skip
+  3rd Roll -> SET_PHASE ROUND3_HOLD
+  Skip -> ADVANCE_PHASE
 
 ROUND3_HOLD
   Hold allowed
@@ -237,7 +287,17 @@ ROUND3_HOLD
   last player NEXT -> RESULT
 
 RESULT
-  modal shows Double Up / Finish
+  modal shows Double Up / Play Again / Settings
+```
+
+## 3rd Roll Decision Popup
+
+`ROUND3_CONFIRM` は画面内 inline buttons ではなく、GameScreen の central popup で `3rd Roll` / `Skip` を選ばせる。
+
+この popup は state.phase だけに依存して表示される。
+
+```txt
+isRound3Confirm = state.phase === "ROUND3_CONFIRM"
 ```
 
 ## Hidden Dependency
@@ -268,7 +328,71 @@ Current UI does not set `ROUND3_ROLL`. `JUDGE` and `ADVANCE_PHASE` are not activ
 
 ---
 
-# 5. Animation Lock / NEXT Gating
+# 5. TurnCutIn / CSS Animation
+
+## Severity
+
+HIGH
+
+## Files
+
+```txt
+features/game/components/TurnCutIn.tsx
+features/game/components/GameScreen.tsx
+styles/globals.css
+```
+
+## Current Behavior
+
+`TurnCutIn` displays:
+
+```txt
+Round n
+<playerName>のターン
+```
+
+It is triggered by:
+
+```txt
+roundNumber = getRoundNumber(state.phase)
+triggerKey = `${roundNumber}-${state.currentPlayerIndex}`
+```
+
+Sequence:
+
+```txt
+0ms    -> step ROUND
+1150ms -> step PLAYER
+2450ms -> step null
+```
+
+The overlay is `pointer-events-none` and should not block gameplay controls.
+
+## Hidden Dependency
+
+Animation classes are global CSS in `styles/globals.css`, not component-scoped CSS.
+
+```txt
+.cutin-backdrop
+.cutin-blade
+.cutin-blade-top
+.cutin-blade-bottom
+.cutin-flash
+.cutin-content
+.cutin-subtitle
+.cutin-title
+@keyframes cutin-*
+```
+
+These class names are referenced by `TurnCutIn.tsx`. Renaming or deleting CSS breaks the cut-in.
+
+## Fragile Build Note
+
+`style jsx` was avoided because Turbopack failed on the scoped style transform in this codebase. Keep the cut-in CSS in global CSS unless build behavior is reverified.
+
+---
+
+# 6. Animation Lock / NEXT Gating
 
 ## Severity
 
@@ -310,7 +434,7 @@ WAITING_NEXT
 
 ---
 
-# 6. Roll Result Synchronization
+# 7. Roll Result Synchronization
 
 ## Severity
 
@@ -358,7 +482,7 @@ The visible animation value and actual state value must come from the same dice-
 
 ---
 
-# 7. Cutoff Logic
+# 8. Cutoff Logic
 
 ## Severity
 
@@ -380,11 +504,11 @@ The only active cutoff / branch behavior is:
 
 ```txt
 ROUND3_CONFIRM
-  Skip -> ADVANCE_PHASE
-  3rd Roll -> ROUND3_HOLD
+  popup 3rd Roll -> SET_PHASE ROUND3_HOLD
+  popup Skip -> ADVANCE_PHASE
 ```
 
-Result actions are also gated:
+Result actions are gated:
 
 ```txt
 Double Up enabled only when:
@@ -392,6 +516,13 @@ Double Up enabled only when:
   not tie
   winners.length > 0
   losers.length > 0
+
+Play Again:
+  always available in Game result modal
+  available in DoubleUp FINISHED only when playerNames.length >= 2 and twoPairRate > 0
+
+Settings:
+  passes player names only
 ```
 
 ## Legacy / Temporary
@@ -400,7 +531,7 @@ Double Up enabled only when:
 
 ---
 
-# 8. Result / Double Up Routing State
+# 9. Result / Double Up / Replay Routing State
 
 ## Severity
 
@@ -414,17 +545,36 @@ features/double-up/store.ts
 features/double-up/components/DoubleUpScreen.tsx
 features/double-up/hooks/useDoubleUpGame.ts
 app/doubleup/page.tsx
+app/settings/page.tsx
+app/game/page.tsx
 ```
 
 ## Hidden Dependency
 
 Double Up data is transient Zustand state, not URL or persistent storage.
 
+Current store fields:
+
 ```txt
-GameScreen RESULT modal
-  -> setDoubleUpData({ winnerIndexes, loserIndexes, score })
+winnerIndexes
+loserIndexes
+score
+playerNames
+twoPairRate
+```
+
+Route handoff:
+
+```txt
+GameScreen.startDoubleUp
+  -> setDoubleUpData({
+       winnerIndexes,
+       loserIndexes,
+       score,
+       playerNames,
+       twoPairRate
+     })
   -> router.push("/doubleup")
-  -> DoubleUpScreen reads store
 ```
 
 If `/doubleup` is opened directly or refreshed, store defaults are used:
@@ -433,7 +583,28 @@ If `/doubleup` is opened directly or refreshed, store defaults are used:
 winnerIndexes: []
 loserIndexes: []
 score: 0
+playerNames: []
+twoPairRate: 0
 ```
+
+## Replay / Settings Buttons
+
+Game result modal:
+
+```txt
+Double Up
+Play Again -> /game?players=...&twoPairRate=...&restart=Date.now()
+Settings   -> /?players=...
+```
+
+DoubleUp FINISHED screen:
+
+```txt
+Play Again -> /game?players=...&twoPairRate=...&restart=Date.now()
+Settings   -> /?players=...
+```
+
+Settings route intentionally carries player information only. Rate is not inherited and remains blank.
 
 ## Route Name
 
@@ -456,7 +627,7 @@ failure     -> currentScore stays as-is, winner/loser display swaps via isSucces
 
 ---
 
-# 9. Settings / Query Param Dependency
+# 10. Settings / Query Param Dependency
 
 ## Severity
 
@@ -495,6 +666,8 @@ Then it routes to:
 
 `app/game/page.tsx` parses these query params and passes them to `GameScreen`.
 
+Settings also reads optional `players` query from `window.location.search` in a client effect and restores only player names. It does not restore rate.
+
 ## Hidden Dependency
 
 `calculateScore(hand, twoPairRate)` treats the configured `twoPairRate` as the value for `TWO_PAIR`, then derives base score:
@@ -519,7 +692,7 @@ But normal flow gets the rate from settings.
 
 ---
 
-# 10. CSS Import Dependency
+# 11. CSS Import Dependency
 
 ## Severity
 
@@ -531,6 +704,7 @@ HIGH
 app/layout.tsx
 styles/globals.css
 app/globals.css
+features/game/components/TurnCutIn.tsx
 ```
 
 ## Current Behavior
@@ -541,21 +715,29 @@ app/globals.css
 import "../styles/globals.css";
 ```
 
-`styles/globals.css` contains Tailwind v4 import:
+`styles/globals.css` contains:
 
 ```css
 @import "tailwindcss";
 ```
 
-The app uses Tailwind utility classes throughout Settings, Game, Double Up, and Dice components. Removing or moving this import without updating layout breaks styling.
+It also contains the `.cutin-*` classes and `@keyframes cutin-*` used by `TurnCutIn`.
+
+Removing or moving this import breaks:
+
+```txt
+Tailwind utility styling
+TurnCutIn animation
+global body colors
+```
 
 ## Legacy / Deprecated
 
-`app/globals.css` exists and currently duplicates the CSS content, but it is not imported by `app/layout.tsx`. Treat it as legacy / unused until the layout import is intentionally changed.
+`app/globals.css` exists and currently duplicates the baseline CSS content, but it is not imported by `app/layout.tsx`. Treat it as legacy / unused until the layout import is intentionally changed.
 
 ---
 
-# 11. Shared Component Boundary
+# 12. Shared Component Boundary
 
 ## Severity
 
@@ -573,6 +755,8 @@ shared/components/Dice/
 
 `shared/components/Dice/Dice3D.tsx` is used through `DiceRollOverlay`.
 
+`shared/components/Dice/DiceRollPreloader.tsx` is a shared preload helper used by `GameScreen`.
+
 ## Legacy / Deprecated
 
 `shared/components/Dice/index.tsx` exports:
@@ -589,7 +773,7 @@ Do not import game reducer, Zustand store, router, or feature-specific rules int
 
 ---
 
-# 12. Type Shim / Temporary Implementation
+# 13. Type Shim / Temporary Implementation
 
 ## Severity
 
@@ -630,7 +814,7 @@ box.roll({
 
 ---
 
-# 13. Unused / Legacy Dependencies and Files
+# 14. Unused / Legacy Dependencies and Files
 
 ## Severity
 
@@ -682,16 +866,22 @@ Settings validation:
   fewer than 2 players
   duplicate players
   blank / 0 / non-integer rate
+  players query restores player names only
 
 Game:
+  TurnCutIn displays Round n and player turn
   1st Roll -> auto ROUND1_HOLD without NEXT
   2nd Roll -> WAITING_NEXT and buttons locked except NEXT
-  3rd Confirm -> Skip works for final player
+  ROUND3_CONFIRM shows decision popup
+  3rd final-player Skip
   3rd Roll -> values update after animation, then NEXT required
-  Result modal -> Double Up / Finish
+  Result modal -> Double Up / Play Again / Settings
+  Play Again restarts with same players and rate
+  Settings returns with players only
 
 Double Up:
   animation die value matches actual rolled value
   HIGH/LOW success thresholds
   Continue / Finish
+  FINISHED -> Play Again / Settings
 ```
