@@ -287,9 +287,15 @@ triggerKey = `${roundNumber}-${state.currentPlayerIndex}`
 Sequence:
 
 ```txt
-0ms    -> Round n
-1150ms -> <playerName>のターン
-2450ms -> hide
+Round changed:
+  0ms    -> set previousRoundRef and show Round n
+  1250ms -> hide Round
+  1450ms -> show <playerName>のターン
+  2750ms -> hide Player
+
+Round unchanged:
+  0ms    -> show <playerName>のターン
+  1300ms -> hide Player
 ```
 
 The overlay uses `pointer-events-none`, so it should not block controls.
@@ -665,11 +671,14 @@ status === ROLLED && !isSuccess
 
 ```txt
 Round changed:
-  Round n
-  player turn
+  0ms    Round n
+  1250ms hide
+  1450ms player turn
+  2750ms hide
 
 Round unchanged:
-  player turn only
+  0ms    player turn
+  1300ms hide
 ```
 
 Implementation dependency:
@@ -677,6 +686,7 @@ Implementation dependency:
 ```txt
 triggerKey = roundNumber-currentPlayerIndex
 previousRoundRef tracks the last shown round
+previousRoundRef is updated when the Round cut-in starts
 ```
 
 This means:

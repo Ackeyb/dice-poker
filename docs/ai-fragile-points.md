@@ -361,9 +361,15 @@ triggerKey = `${roundNumber}-${state.currentPlayerIndex}`
 Sequence:
 
 ```txt
-0ms    -> step ROUND
-1150ms -> step PLAYER
-2450ms -> step null
+Round changed:
+  0ms    -> step ROUND
+  1250ms -> step null
+  1450ms -> step PLAYER
+  2750ms -> step null
+
+Round unchanged:
+  0ms    -> step PLAYER
+  1300ms -> step null
 ```
 
 The overlay is `pointer-events-none` and should not block gameplay controls.
@@ -950,20 +956,23 @@ Cut-in behavior is split by whether the round changed.
 
 ```txt
 Round changed:
-  0ms    -> Round n
-  1150ms -> <playerName>のターン
-  2450ms -> hide
+  0ms    -> set previousRoundRef and show Round n
+  1250ms -> hide Round
+  1450ms -> show <playerName>のターン
+  2750ms -> hide Player
 
 Round unchanged:
-  0ms    -> <playerName>のターン
-  1300ms -> hide
+  0ms    -> show <playerName>のターン
+  1300ms -> hide Player
 ```
 
 `TurnCutIn` uses `previousRoundRef` to distinguish round updates from player-only turn changes.
+`previousRoundRef.current = roundNumber` is intentionally set inside the 0ms Round timer. Moving it before timer setup can make the initial Round 1 cut-in disappear during React dev effect replay.
 
 ## Fragile Points
 
 - `triggerKey` still changes on `roundNumber-currentPlayerIndex`.
 - `previousRoundRef` decides whether to show Round -> Player or Player only.
 - Do not simplify the effect back to always showing Round -> Player.
+- Do not move the `previousRoundRef.current = roundNumber` assignment outside the Round timer without rechecking Round 1 and round-change sequencing.
 - The `.cutin-*` classes and `@keyframes cutin-*` remain in `styles/globals.css`.

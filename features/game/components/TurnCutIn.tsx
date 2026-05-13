@@ -39,29 +39,35 @@ export const TurnCutIn = ({
       previousRoundRef.current !==
       roundNumber;
 
-    previousRoundRef.current =
-      roundNumber;
-
     const timers:
       ReturnType<typeof setTimeout>[] = [];
 
     if (isRoundChanged) {
       timers.push(
         setTimeout(() => {
+          previousRoundRef.current =
+            roundNumber;
+
           setStep("ROUND");
         }, 0)
       );
 
       timers.push(
         setTimeout(() => {
+          setStep(null);
+        }, 1250)
+      );
+
+      timers.push(
+        setTimeout(() => {
           setStep("PLAYER");
-        }, 1150)
+        }, 1450)
       );
 
       timers.push(
         setTimeout(() => {
           setStep(null);
-        }, 2450)
+        }, 2750)
       );
     } else {
       timers.push(
