@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -26,30 +27,60 @@ export const TurnCutIn = ({
     setStep,
   ] = useState<CutInStep>(null);
 
+  const previousRoundRef =
+    useRef<number | null>(null);
+
   useEffect(() => {
     if (!roundNumber) {
       return;
     }
 
-    const startId =
-      setTimeout(() => {
-        setStep("ROUND");
-      }, 0);
+    const isRoundChanged =
+      previousRoundRef.current !==
+      roundNumber;
 
-    const playerId =
-      setTimeout(() => {
-        setStep("PLAYER");
-      }, 1150);
+    previousRoundRef.current =
+      roundNumber;
 
-    const endId =
-      setTimeout(() => {
-        setStep(null);
-      }, 2450);
+    const timers:
+      ReturnType<typeof setTimeout>[] = [];
+
+    if (isRoundChanged) {
+      timers.push(
+        setTimeout(() => {
+          setStep("ROUND");
+        }, 0)
+      );
+
+      timers.push(
+        setTimeout(() => {
+          setStep("PLAYER");
+        }, 1150)
+      );
+
+      timers.push(
+        setTimeout(() => {
+          setStep(null);
+        }, 2450)
+      );
+    } else {
+      timers.push(
+        setTimeout(() => {
+          setStep("PLAYER");
+        }, 0)
+      );
+
+      timers.push(
+        setTimeout(() => {
+          setStep(null);
+        }, 1300)
+      );
+    }
 
     return () => {
-      clearTimeout(startId);
-      clearTimeout(playerId);
-      clearTimeout(endId);
+      timers.forEach(timer => {
+        clearTimeout(timer);
+      });
     };
   }, [roundNumber, triggerKey]);
 

@@ -185,40 +185,56 @@ export const DoubleUpScreen =
 
           <button
             className={`
-              border border-red-500
-              px-8 py-4 rounded
+              rounded
+              border-2
+              px-8 py-4
               text-2xl font-bold
-              bg-red-900
+              transition
               ${
                 choice === "HIGH"
-                  ? "bg-red-500 text-white"
-                  : ""
+                  ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
+                  : "border-red-700 bg-red-950 text-red-200 hover:border-red-400"
               }
             `}
             onClick={() => {
               setChoice("HIGH");
             }}
           >
-            High
+            <span className="block">
+              High
+            </span>
+            {choice === "HIGH" && (
+              <span className="block text-xs uppercase tracking-widest">
+                Selected
+              </span>
+            )}
           </button>
 
           <button
             className={`
-              border border-red-500
-              px-8 py-4 rounded
+              rounded
+              border-2
+              px-8 py-4
               text-2xl font-bold
-              bg-red-900
+              transition
               ${
                 choice === "LOW"
-                  ? "bg-red-500 text-white"
-                  : ""
+                  ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
+                  : "border-red-700 bg-red-950 text-red-200 hover:border-red-400"
               }
             `}
             onClick={() => {
               setChoice("LOW");
             }}
           >
-            Low
+            <span className="block">
+              Low
+            </span>
+            {choice === "LOW" && (
+              <span className="block text-xs uppercase tracking-widest">
+                Selected
+              </span>
+            )}
           </button>
 
           <button
@@ -247,7 +263,7 @@ export const DoubleUpScreen =
         </div>
       )}
 
-      {status === "ROLLED" && (
+      {status === "ROLLED" && !isSuccess && (
         <div className="space-y-8">
 
           <div className="flex justify-center">
@@ -272,26 +288,10 @@ export const DoubleUpScreen =
           </div>
 
           <div className="text-4xl font-bold">
-            {isSuccess
-              ? "Success"
-              : "Failure"}
+            Failure
           </div>
 
           <div className="flex flex-wrap gap-4">
-
-            <button
-              disabled={!isSuccess}
-              className={`
-                border border-red-400
-                px-8 py-4 rounded
-                text-xl font-bold
-                bg-red-800
-                ${!isSuccess ? "opacity-50" : ""}
-              `}
-              onClick={handleContinue}
-            >
-              Continue
-            </button>
 
             <button
               className="
@@ -307,6 +307,156 @@ export const DoubleUpScreen =
 
           </div>
 
+        </div>
+      )}
+
+      {status === "ROLLED" && isSuccess && (
+        <div
+          className="
+            fixed inset-0 z-50
+            flex items-center justify-center
+            bg-black/75
+            px-4
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-md
+              overflow-hidden
+              rounded-lg
+              border border-red-700
+              bg-red-950
+              text-red-50
+              shadow-2xl
+              shadow-red-950/50
+            "
+          >
+            <div
+              className="
+                border-b border-red-800
+                bg-gradient-to-r
+                from-red-700
+                via-red-900
+                to-red-950
+                p-5
+              "
+            >
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-100
+                "
+              >
+                Double Up Success
+              </div>
+
+              <h2
+                className="
+                  mt-2
+                  text-4xl
+                  font-black
+                  text-white
+                "
+              >
+                Success
+              </h2>
+            </div>
+
+            <div className="space-y-5 p-5">
+              <div className="flex justify-center">
+                {rolledValue && (
+                  <Dice
+                    value={rolledValue}
+                    disabled
+                    className="
+                      h-28 w-28
+                      border-4
+                      border-red-200
+                      bg-red-50
+                      text-6xl
+                      text-red-950
+                      opacity-100
+                      shadow-xl
+                    "
+                  />
+                )}
+              </div>
+
+              <div
+                className="
+                  rounded
+                  border border-red-800
+                  bg-red-900
+                  p-4
+                  text-center
+                "
+              >
+                <div className="text-sm text-red-200">
+                  Current Score
+                </div>
+                <div
+                  className="
+                    mt-1
+                    text-5xl
+                    font-black
+                    text-white
+                  "
+                >
+                  {currentScore}
+                </div>
+              </div>
+
+              <div className="text-center text-sm text-red-100">
+                Continue?
+              </div>
+
+              <div
+                className="
+                  grid gap-3
+                  sm:grid-cols-2
+                "
+              >
+                <button
+                  type="button"
+                  className="
+                    rounded
+                    bg-red-500
+                    px-6 py-4
+                    text-lg
+                    font-black
+                    text-white
+                    transition
+                    hover:bg-red-400
+                  "
+                  onClick={handleContinue}
+                >
+                  Continue
+                </button>
+
+                <button
+                  type="button"
+                  className="
+                    rounded
+                    border border-red-300
+                    bg-red-950
+                    px-6 py-4
+                    text-lg
+                    font-black
+                    text-red-50
+                    transition
+                    hover:border-white
+                  "
+                  onClick={handleFinish}
+                >
+                  Finish
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

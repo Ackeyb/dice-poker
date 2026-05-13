@@ -885,3 +885,85 @@ Double Up:
   Continue / Finish
   FINISHED -> Play Again / Settings
 ```
+
+---
+
+# Latest Update: Double Up Success Popup / Choice State
+
+## Files
+
+```txt
+features/double-up/components/DoubleUpScreen.tsx
+features/double-up/hooks/useDoubleUpGame.ts
+```
+
+## Current Behavior
+
+High / Low selection is intentionally visually strong.
+
+```txt
+selected:
+  border-white
+  bg-red-500
+  shadow-red-500/30
+  Selected label
+
+not selected:
+  border-red-700
+  bg-red-950
+  text-red-200
+```
+
+When `status === "ROLLED" && isSuccess`, Double Up shows a success popup.
+
+```txt
+Success popup:
+  shows rolled die
+  shows Current Score
+  asks Continue / Finish
+```
+
+When `status === "ROLLED" && !isSuccess`, the inline failure result remains and only Finish is shown.
+
+## Fragile Points
+
+- `currentScore` is updated in `useDoubleUpGame.resolveRoll` before the success popup renders.
+- The success popup depends on `status === "ROLLED"` and `isSuccess === true`.
+- Continue must call `handleContinue`; Finish must call `handleFinish`.
+- Do not reduce the selected High / Low styling to a subtle color change. It is a user-facing clarity requirement.
+
+---
+
+# Latest Update: TurnCutIn Round / Player Separation
+
+## Files
+
+```txt
+features/game/components/TurnCutIn.tsx
+features/game/components/GameScreen.tsx
+styles/globals.css
+```
+
+## Current Behavior
+
+Cut-in behavior is split by whether the round changed.
+
+```txt
+Round changed:
+  0ms    -> Round n
+  1150ms -> <playerName>のターン
+  2450ms -> hide
+
+Round unchanged:
+  0ms    -> <playerName>のターン
+  1300ms -> hide
+```
+
+`TurnCutIn` uses `previousRoundRef` to distinguish round updates from player-only turn changes.
+
+## Fragile Points
+
+- `triggerKey` still changes on `roundNumber-currentPlayerIndex`.
+- `previousRoundRef` decides whether to show Round -> Player or Player only.
+- Do not simplify the effect back to always showing Round -> Player.
+- The `.cutin-*` classes and `@keyframes cutin-*` remain in `styles/globals.css`.

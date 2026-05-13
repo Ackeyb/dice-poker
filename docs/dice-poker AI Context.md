@@ -622,3 +622,66 @@ Settings keeps player names only
 Double Up HIGH/LOW animation and result value synchronization
 Double Up FINISHED Play Again / Settings
 ```
+
+---
+
+# Latest Update: Double Up Success Popup
+
+Double Up now has stronger selected-state styling for High / Low.
+
+```txt
+selected choice:
+  bright red button
+  white border
+  red shadow
+  Selected label
+```
+
+After a successful roll:
+
+```txt
+status === ROLLED && isSuccess
+  -> success popup
+  -> rolled die is shown
+  -> Current Score is shown
+  -> Continue / Finish are offered
+```
+
+After a failed roll:
+
+```txt
+status === ROLLED && !isSuccess
+  -> inline failure result
+  -> Finish only
+```
+
+`currentScore` is already doubled by `useDoubleUpGame.resolveRoll` before the success popup renders.
+
+---
+
+# Latest Update: Round / Player Cut-In Split
+
+`TurnCutIn` no longer always displays Round -> Player.
+
+```txt
+Round changed:
+  Round n
+  player turn
+
+Round unchanged:
+  player turn only
+```
+
+Implementation dependency:
+
+```txt
+triggerKey = roundNumber-currentPlayerIndex
+previousRoundRef tracks the last shown round
+```
+
+This means:
+
+```txt
+round update: Round cut-in -> Player cut-in
+player switch inside same round: Player cut-in only
+```
