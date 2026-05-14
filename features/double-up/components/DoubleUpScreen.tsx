@@ -814,8 +814,10 @@ export const DoubleUpScreen =
         onComplete={completeRoll}
         diceScale={20}
         diceClassName="
-          h-[1040px]
-          max-h-[85vh]
+          h-[300px]
+          sm:h-[480px]
+          lg:h-[720px]
+          max-h-[75vh]
         "
         panelClassName="
           max-w-6xl

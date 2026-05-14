@@ -43,28 +43,28 @@ const getGridClassName = (
   count: number
 ) => {
   if (count <= 2) {
-    return "grid-cols-2";
+    return "grid-cols-1 sm:grid-cols-2";
   }
 
   if (count === 3) {
-    return "grid-cols-3";
+    return "grid-cols-1 sm:grid-cols-3";
   }
 
-  return "grid-cols-3";
+  return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 };
 
 const getCellClassName = (
   count: number
 ) => {
   if (count <= 2) {
-    return "h-[42vh] max-h-[520px] min-h-[240px]";
+    return "h-[190px] sm:h-[320px] lg:h-[420px]";
   }
 
   if (count === 3) {
-    return "h-[34vh] max-h-[460px] min-h-[220px]";
+    return "h-[170px] sm:h-[260px] lg:h-[360px]";
   }
 
-  return "h-[30vh] max-h-[360px] min-h-[180px]";
+  return "h-[150px] sm:h-[240px] lg:h-[320px]";
 };
 
 const DiceRollDie = ({

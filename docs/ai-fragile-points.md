@@ -363,13 +363,13 @@ Sequence:
 ```txt
 Round changed:
   0ms    -> step ROUND
-  1250ms -> step null
-  1450ms -> step PLAYER
-  2750ms -> step null
+  1875ms -> step null
+  2175ms -> step PLAYER
+  4125ms -> step null + onComplete
 
 Round unchanged:
   0ms    -> step PLAYER
-  1300ms -> step null
+  1950ms -> step null + onComplete
 ```
 
 The overlay is `pointer-events-none` and should not block gameplay controls.
@@ -1017,17 +1017,18 @@ Cut-in behavior is split by whether the round changed.
 ```txt
 Round changed:
   0ms    -> set previousRoundRef and show Round n
-  1250ms -> hide Round
-  1450ms -> show <playerName>のターン
-  2750ms -> hide Player
+  1875ms -> hide Round
+  2175ms -> show <playerName>のターン
+  4125ms -> hide Player and call onComplete(triggerKey)
 
 Round unchanged:
   0ms    -> show <playerName>のターン
-  1300ms -> hide Player
+  1950ms -> hide Player and call onComplete(triggerKey)
 ```
 
 `TurnCutIn` uses `previousRoundRef` to distinguish round updates from player-only turn changes.
 `previousRoundRef.current = roundNumber` is intentionally set inside the 0ms Round timer. Moving it before timer setup can make the initial Round 1 cut-in disappear during React dev effect replay.
+`GameScreen` uses the completed cut-in key to delay the `ROUND3_CONFIRM` popup until all cut-ins are finished.
 
 ## Fragile Points
 
@@ -1035,4 +1036,60 @@ Round unchanged:
 - `previousRoundRef` decides whether to show Round -> Player or Player only.
 - Do not simplify the effect back to always showing Round -> Player.
 - Do not move the `previousRoundRef.current = roundNumber` assignment outside the Round timer without rechecking Round 1 and round-change sequencing.
+- Do not show `ROUND3_CONFIRM` directly from phase alone; gate it with `completedCutInKey === cutInTriggerKey`.
 - The `.cutin-*` classes and `@keyframes cutin-*` remain in `styles/globals.css`.
+
+---
+
+# Latest Update: Current Hands / Responsive DiceBox
+
+## Files
+
+```txt
+features/game/components/GameScreen.tsx
+shared/components/Dice/Dice3D.tsx
+shared/components/Dice/DiceRollOverlay.tsx
+features/double-up/components/DoubleUpScreen.tsx
+styles/globals.css
+```
+
+## Current Behavior
+
+The old inline `Result` section has been removed. Main Game now always shows a bottom `Current Hands` summary.
+
+```txt
+For each player:
+  dice values
+  current hand
+  score from calculateScore(hand, twoPairRate)
+
+Before a player's 1st Roll:
+  ROLL前
+```
+
+The final action popup is now titled `Game Complete`; it does not duplicate the per-player result cards.
+
+`judgeHand` checks stronger hands first, so overlapping hand conditions resolve to the higher hand.
+
+DiceBox visual/physics density is controlled through responsive canvas dimensions:
+
+```txt
+Game overlay:
+  h-[260px] sm:h-[420px] lg:h-[680px]
+
+Double Up overlay:
+  h-[300px] sm:h-[480px] lg:h-[720px]
+
+Multi-dice overlay:
+  mobile 1 column
+  tablet / desktop 2-3 columns
+```
+
+`Dice3D` limits requestAnimationFrame while mounted to roughly 30fps and restores the original browser functions after all Dice3D instances unmount.
+
+## Fragile Points
+
+- `hasPlayerRolledAtLeastOnce` infers ROLL前 from phase and currentPlayerIndex; changing phase flow requires rechecking this summary.
+- `GameState.phase` still uses internal `RESULT`; UI displays `COMPLETE`.
+- DiceBox does not expose public table-size / camera-distance config, so the responsive canvas dimensions are the current table/camera control surface.
+- The global requestAnimationFrame patch is reference-counted. Do not remove the user count unless replacing it with a DiceBox-native FPS option.

@@ -5,8 +5,6 @@ import { getPlayerResults }
 from "../utils/getPlayerResults";
 import { getWinnersAndLosers }
 from "../utils/getWinnersAndLosers";
-import { HAND_STRENGTH }
-from "../constants/handStrength";
 import { calculateScore }
 from "../utils/calculateScore";
 import { useRouter }
@@ -115,6 +113,22 @@ const getRoundNumber = (
   return null;
 };
 
+const hasPlayerRolledAtLeastOnce = (
+  phase: string,
+  currentPlayerIndex: number,
+  playerIndex: number
+) => {
+  if (!phase.startsWith("ROUND1")) {
+    return true;
+  }
+
+  if (phase === "ROUND1_ROLL") {
+    return playerIndex < currentPlayerIndex;
+  }
+
+  return playerIndex <= currentPlayerIndex;
+};
+
 export const GameScreen = ({
   playerNames,
   twoPairRate,
@@ -148,6 +162,11 @@ export const GameScreen = ({
     setShowSkipRollConfirm,
   ] = useState(false);
 
+  const [
+    completedCutInKey,
+    setCompletedCutInKey,
+  ] = useState<string | null>(null);
+
   const pendingRollPhaseRef =
     useRef<typeof state.phase | null>(
       null
@@ -173,12 +192,6 @@ export const GameScreen = ({
   const currentPlayerNames =
     state.players.map(player => player.name);
 
-  const getPlayerName = (
-    playerIndex: number
-  ) =>
-    currentPlayerNames[playerIndex] ??
-    `Player ${playerIndex + 1}`;
-
   const effectiveTwoPairRate =
     twoPairRate ?? DEFAULT_TWO_PAIR_RATE;
 
@@ -187,10 +200,42 @@ export const GameScreen = ({
 
   const cutInTriggerKey =
     `${roundNumber}-${state.currentPlayerIndex}`;
+
+  const displayPhase =
+    state.phase === "RESULT"
+      ? "COMPLETE"
+      : state.phase;
   
   const results = getPlayerResults(
   state.players
   );
+
+  const playerSummaries =
+    state.players.map((player, index) => {
+      const hasRolled =
+        hasPlayerRolledAtLeastOnce(
+          state.phase,
+          state.currentPlayerIndex,
+          index
+        );
+
+      const result =
+        results[index];
+
+      return {
+        player,
+        playerIndex: index,
+        hasRolled,
+        hand: result?.hand,
+        score:
+          hasRolled && result
+            ? calculateScore(
+                result.hand,
+                effectiveTwoPairRate
+              )
+            : null,
+      };
+    });
 
   const {
   winners,
@@ -198,7 +243,8 @@ export const GameScreen = ({
   } = getWinnersAndLosers(results);
   
   const isRound3Confirm =
-    state.phase === "ROUND3_CONFIRM"; 
+    state.phase === "ROUND3_CONFIRM" &&
+    completedCutInKey === cutInTriggerKey;
 
   const canHold =
     state.phase === "ROUND1_HOLD" ||
@@ -514,7 +560,7 @@ export const GameScreen = ({
                 text-red-300
               "
             >
-              {state.phase}
+              {displayPhase}
             </div>
           </div>
         </header>
@@ -660,78 +706,202 @@ export const GameScreen = ({
 
         </section>
 
-        {state.phase === "RESULT" && (
-          <section
+        <section
+          className="
+            rounded
+            border border-zinc-800
+            bg-zinc-900
+            p-4
+          "
+        >
+          <div
             className="
-              rounded
-              border border-zinc-800
-              bg-zinc-900
-              p-4
+              flex items-end
+              justify-between gap-3
             "
           >
-            <h2
-              className="
-                text-xl
-                font-bold
-                text-white
-              "
-            >
-              Result
-            </h2>
+            <div>
+              <div
+                className="
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-widest
+                  text-red-400
+                "
+              >
+                Standings
+              </div>
+              <h2
+                className="
+                  text-xl
+                  font-bold
+                  text-white
+                "
+              >
+                Current Hands
+              </h2>
+            </div>
+          </div>
 
-            <div
-              className="
-                mt-3
-                grid gap-3
-                sm:grid-cols-2
-              "
-            >
-              {results.map(result => (
+          <div
+            className="
+              mt-3
+              grid gap-3
+              sm:grid-cols-2
+            "
+          >
+            {playerSummaries.map(summary => (
+              <div
+                key={summary.playerIndex}
+                className={`
+                  rounded
+                  border
+                  p-3
+                  ${
+                    summary.playerIndex ===
+                    state.currentPlayerIndex
+                      ? "border-red-800 bg-red-950/40"
+                      : "border-zinc-800 bg-zinc-950"
+                  }
+                `}
+              >
                 <div
-                  key={result.playerIndex}
                   className="
-                    rounded
-                    border border-zinc-800
-                    bg-zinc-950
-                    p-3
+                    flex items-start
+                    justify-between gap-3
                   "
                 >
-                  <div className="text-sm text-zinc-500">
-                    {getPlayerName(
-                      result.playerIndex
-                    )}
+                  <div>
+                    <div className="text-sm text-zinc-500">
+                      Player
+                    </div>
+                    <div
+                      className="
+                        text-lg
+                        font-bold
+                        text-white
+                      "
+                    >
+                      {summary.player.name}
+                    </div>
                   </div>
+
+                  {summary.playerIndex ===
+                    state.currentPlayerIndex && (
+                    <div
+                      className="
+                        rounded
+                        bg-red-900
+                        px-2 py-1
+                        text-xs
+                        font-bold
+                        text-red-100
+                      "
+                    >
+                      Turn
+                    </div>
+                  )}
+                </div>
+
+                {summary.hasRolled ? (
+                  <>
+                    <div
+                      className="
+                        mt-3
+                        flex flex-wrap gap-1.5
+                      "
+                    >
+                      {summary.player.dice.map(die => (
+                        <div
+                          key={die.id}
+                          className="
+                            flex h-8 w-8
+                            items-center justify-center
+                            rounded
+                            border border-zinc-700
+                            bg-zinc-100
+                            text-sm
+                            font-black
+                            text-zinc-950
+                          "
+                        >
+                          {die.value}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div
+                      className="
+                        mt-3
+                        grid grid-cols-2 gap-2
+                        text-sm
+                      "
+                    >
+                      <div
+                        className="
+                          rounded
+                          border border-zinc-800
+                          bg-zinc-900
+                          p-2
+                        "
+                      >
+                        <div className="text-zinc-500">
+                          Hand
+                        </div>
+                        <div
+                          className="
+                            font-bold
+                            text-white
+                          "
+                        >
+                          {summary.hand}
+                        </div>
+                      </div>
+
+                      <div
+                        className="
+                          rounded
+                          border border-zinc-800
+                          bg-zinc-900
+                          p-2
+                        "
+                      >
+                        <div className="text-zinc-500">
+                          Score
+                        </div>
+                        <div
+                          className="
+                            font-bold
+                            text-red-300
+                          "
+                        >
+                          {summary.score}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
                   <div
                     className="
-                      text-lg
-                      font-bold
-                      text-white
-                    "
-                  >
-                    {result.hand}
-                  </div>
-                  <div className="text-sm text-zinc-400">
-                    Strength: {HAND_STRENGTH[result.hand]}
-                  </div>
-                  <div
-                    className="
+                      mt-3
+                      rounded
+                      border border-dashed
+                      border-zinc-700
+                      bg-zinc-950
+                      p-3
                       text-sm
                       font-bold
-                      text-red-300
+                      text-zinc-400
                     "
                   >
-                    Score:
-                    {" "}
-                    {calculateScore(
-                      result.hand,
-                      effectiveTwoPairRate
-                    )}
+                    ROLL前
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       {isRound3Confirm && (
@@ -989,67 +1159,21 @@ export const GameScreen = ({
                 text-white
               "
             >
-              Game Result
+              Game Complete
             </h2>
 
-            <div className="mt-4 space-y-3">
-              <div
-                className="
-                  rounded
-                  border border-zinc-800
-                  bg-zinc-950
-                  p-3
-                "
-              >
-                <div className="text-sm text-zinc-500">
-                  {isTie ? "Tie" : "Winners"}
-                </div>
-                <div
-                  className="
-                    mt-1
-                    font-bold
-                    text-red-300
-                  "
-                >
-                  {(isTie ? results : winners)
-                    .map(result =>
-                      getPlayerName(
-                        result.playerIndex
-                      )
-                    )
-                    .join(", ")}
-                </div>
-              </div>
-
-              {!isTie && (
-                <div
-                  className="
-                    rounded
-                    border border-zinc-800
-                    bg-zinc-950
-                    p-3
-                  "
-                >
-                  <div className="text-sm text-zinc-500">
-                    Losers
-                  </div>
-                  <div
-                    className="
-                      mt-1
-                      font-bold
-                      text-zinc-200
-                    "
-                  >
-                    {losers
-                      .map(result =>
-                        getPlayerName(
-                          result.playerIndex
-                        )
-                      )
-                      .join(", ")}
-                  </div>
-                </div>
-              )}
+            <div
+              className="
+                mt-4
+                rounded
+                border border-zinc-800
+                bg-zinc-950
+                p-3
+                text-sm
+                text-zinc-300
+              "
+            >
+              全員の現在の出目・役・スコアは画面下部の一覧で確認できます。
             </div>
 
             <div
@@ -1131,8 +1255,10 @@ export const GameScreen = ({
         diceScale={15}
 
         diceClassName="
-          h-[900px]
-          max-h-[85vh]
+          h-[260px]
+          sm:h-[420px]
+          lg:h-[680px]
+          max-h-[72vh]
         "
 
         panelClassName="
@@ -1146,6 +1272,7 @@ export const GameScreen = ({
         roundNumber={roundNumber}
         playerName={currentPlayer.name}
         triggerKey={cutInTriggerKey}
+        onComplete={setCompletedCutInKey}
       />
 
     </main>

@@ -15,12 +15,16 @@ type Props = {
   roundNumber: number | null;
   playerName: string;
   triggerKey: string;
+  onComplete?: (
+    triggerKey: string
+  ) => void;
 };
 
 export const TurnCutIn = ({
   roundNumber,
   playerName,
   triggerKey,
+  onComplete,
 }: Props) => {
   const [
     step,
@@ -55,19 +59,20 @@ export const TurnCutIn = ({
       timers.push(
         setTimeout(() => {
           setStep(null);
-        }, 1250)
+        }, 1875)
       );
 
       timers.push(
         setTimeout(() => {
           setStep("PLAYER");
-        }, 1450)
+        }, 2175)
       );
 
       timers.push(
         setTimeout(() => {
           setStep(null);
-        }, 2750)
+          onComplete?.(triggerKey);
+        }, 4125)
       );
     } else {
       timers.push(
@@ -79,7 +84,8 @@ export const TurnCutIn = ({
       timers.push(
         setTimeout(() => {
           setStep(null);
-        }, 1300)
+          onComplete?.(triggerKey);
+        }, 1950)
       );
     }
 
@@ -88,7 +94,7 @@ export const TurnCutIn = ({
         clearTimeout(timer);
       });
     };
-  }, [roundNumber, triggerKey]);
+  }, [onComplete, roundNumber, triggerKey]);
 
   if (!step || !roundNumber) {
     return null;

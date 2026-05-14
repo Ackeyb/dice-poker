@@ -289,13 +289,13 @@ Sequence:
 ```txt
 Round changed:
   0ms    -> set previousRoundRef and show Round n
-  1250ms -> hide Round
-  1450ms -> show <playerName>のターン
-  2750ms -> hide Player
+  1875ms -> hide Round
+  2175ms -> show <playerName>のターン
+  4125ms -> hide Player and call onComplete(triggerKey)
 
 Round unchanged:
   0ms    -> show <playerName>のターン
-  1300ms -> hide Player
+  1950ms -> hide Player and call onComplete(triggerKey)
 ```
 
 The overlay uses `pointer-events-none`, so it should not block controls.
@@ -718,13 +718,13 @@ This is a UI-level overlap reduction. It does not alter `@3d-dice/dice-box` phys
 ```txt
 Round changed:
   0ms    Round n
-  1250ms hide
-  1450ms player turn
-  2750ms hide
+  1875ms hide
+  2175ms player turn
+  4125ms hide + onComplete
 
 Round unchanged:
   0ms    player turn
-  1300ms hide
+  1950ms hide + onComplete
 ```
 
 Implementation dependency:
@@ -733,6 +733,7 @@ Implementation dependency:
 triggerKey = roundNumber-currentPlayerIndex
 previousRoundRef tracks the last shown round
 previousRoundRef is updated when the Round cut-in starts
+GameScreen gates ROUND3_CONFIRM popup on completedCutInKey === cutInTriggerKey
 ```
 
 This means:
@@ -741,3 +742,40 @@ This means:
 round update: Round cut-in -> Player cut-in
 player switch inside same round: Player cut-in only
 ```
+
+---
+
+# Latest Update: Current Hands / Responsive DiceBox
+
+Main Game no longer renders the old inline `Result` section. Instead, `GameScreen` always renders `Current Hands` near the bottom of the game screen.
+
+```txt
+Current Hands:
+  player name
+  dice values after the player's first roll
+  current hand
+  score
+
+Before first roll:
+  ROLL前
+```
+
+The finish popup title is `Game Complete`; detailed per-player outcome is read from the `Current Hands` summary.
+
+Hand priority still comes from `judgeHand` order. Stronger hands are checked before weaker hands.
+
+DiceBox responsiveness:
+
+```txt
+Game Dice3D canvas:
+  h-[260px] sm:h-[420px] lg:h-[680px]
+
+Double Up Dice3D canvas:
+  h-[300px] sm:h-[480px] lg:h-[720px]
+
+Multi-dice DiceRollOverlay:
+  mobile: one column, wider per-die physical space
+  tablet/desktop: 2-3 columns
+```
+
+`Dice3D` temporarily limits `requestAnimationFrame` to roughly 30fps while Dice3D instances are mounted. This is a local wrapper-level workaround because the current dice-box package does not expose a public FPS option.

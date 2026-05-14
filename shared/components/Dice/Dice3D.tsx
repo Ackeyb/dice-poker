@@ -20,11 +20,76 @@ type Props = {
   elementId?: string;
 };
 
+const TARGET_FRAME_MS =
+  1000 / 30;
+
+let frameLimitUsers = 0;
+let originalRequestAnimationFrame:
+  typeof window.requestAnimationFrame | null =
+    null;
+let originalCancelAnimationFrame:
+  typeof window.cancelAnimationFrame | null =
+    null;
+
+const enableFrameRateLimit = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  frameLimitUsers += 1;
+
+  if (originalRequestAnimationFrame) {
+    return;
+  }
+
+  originalRequestAnimationFrame =
+    window.requestAnimationFrame.bind(window);
+  originalCancelAnimationFrame =
+    window.cancelAnimationFrame.bind(window);
+
+  window.requestAnimationFrame = callback => {
+    return window.setTimeout(() => {
+      const frameTime =
+        performance.now();
+
+      callback(frameTime);
+    }, TARGET_FRAME_MS);
+  };
+
+  window.cancelAnimationFrame = handle => {
+    window.clearTimeout(handle);
+  };
+};
+
+const disableFrameRateLimit = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  frameLimitUsers =
+    Math.max(0, frameLimitUsers - 1);
+
+  if (
+    frameLimitUsers > 0 ||
+    !originalRequestAnimationFrame
+  ) {
+    return;
+  }
+
+  window.requestAnimationFrame =
+    originalRequestAnimationFrame;
+  window.cancelAnimationFrame =
+    originalCancelAnimationFrame ??
+    window.cancelAnimationFrame;
+  originalRequestAnimationFrame = null;
+  originalCancelAnimationFrame = null;
+};
+
 export const Dice3D = ({
   values,
   onRollComplete,
   scale = 5,
-  className = "",
+  className = "h-[300px]",
   elementId = "dice-box",
 }: Props) => {
 
@@ -38,11 +103,14 @@ export const Dice3D = ({
 
   useEffect(() => {
     let active = true;
+    enableFrameRateLimit();
 
     const container =
       containerRef.current;
 
     if (!container) {
+      disableFrameRateLimit();
+
       return;
     }
 
@@ -115,6 +183,7 @@ export const Dice3D = ({
       container.innerHTML = "";
 
       diceBoxRef.current = null;
+      disableFrameRateLimit();
     };
   }, [elementId, onRollComplete, scale, values]);
 
@@ -126,7 +195,6 @@ export const Dice3D = ({
 
       className={`
         w-full
-        h-[300px]
 
         ${className}
       `}
