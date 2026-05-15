@@ -275,6 +275,7 @@ ROUND2_ROLL
 
 ROUND3_CONFIRM
   central popup asks 3rd Roll or Skip
+  central popup shows current leader name/hand and current player's hand
   3rd Roll -> SET_PHASE ROUND3_HOLD
   Skip -> ADVANCE_PHASE
 
@@ -294,11 +295,15 @@ RESULT
 
 `ROUND3_CONFIRM` は画面内 inline buttons ではなく、GameScreen の central popup で `3rd Roll` / `Skip` を選ばせる。
 
-この popup は state.phase だけに依存して表示される。
+この popup は `state.phase` と `completedCutInKey === cutInTriggerKey` に依存して表示される。カットイン終了前に出してはいけない。
 
 ```txt
-isRound3Confirm = state.phase === "ROUND3_CONFIRM"
+isRound3Confirm =
+  state.phase === "ROUND3_CONFIRM" &&
+  completedCutInKey === cutInTriggerKey
 ```
+
+The popup derives current leader data from `getWinnersAndLosers(results)` and current player hand from `getPlayerResults(state.players)`.
 
 ## Hidden Dependency
 
@@ -372,7 +377,7 @@ Round unchanged:
   1950ms -> step null + onComplete
 ```
 
-The overlay is `pointer-events-none` and should not block gameplay controls.
+The overlay is a modal dialog with `aria-modal="true"` and `pointer-events-auto`; it intentionally blocks gameplay controls while visible.
 
 ## Hidden Dependency
 
@@ -525,7 +530,7 @@ Double Up enabled only when:
 
 Play Again:
   always available in Game result modal
-  available in DoubleUp FINISHED only when playerNames.length >= 2 and twoPairRate > 0
+  available in DoubleUp FINISHED only when playerNames.length >= 2 and onePairRate > 0
 
 Settings:
   passes player names only
@@ -557,7 +562,7 @@ app/game/page.tsx
 
 ## Hidden Dependency
 
-Deprecated: Double Up data used to be transient Zustand state only. Current code still writes Zustand, but also routes to `/doubleup` with URL params for winners, losers, score, playerNames, and twoPairRate.
+Deprecated: Double Up data used to be transient Zustand state only. Current code still writes Zustand, but also routes to `/doubleup` with URL params for winners, losers, score, playerNames, and onePairRate.
 
 Current store fields:
 
@@ -566,7 +571,7 @@ winnerIndexes
 loserIndexes
 score
 playerNames
-twoPairRate
+onePairRate
 ```
 
 Route handoff:
@@ -578,9 +583,9 @@ GameScreen.startDoubleUp
        loserIndexes,
        score,
        playerNames,
-       twoPairRate
+       onePairRate
      })
-  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&twoPairRate=...")
+  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&onePairRate=...")
 ```
 
 If `/doubleup` is opened directly or refreshed, `DoubleUpScreen` first tries URL query params, then falls back to store defaults:
@@ -590,7 +595,7 @@ winnerIndexes: []
 loserIndexes: []
 score: 0
 playerNames: []
-twoPairRate: 0
+onePairRate: 0
 ```
 
 The Result popup and Double Up screen resolve display names through `playerNames[index] ?? Player n`.
@@ -600,15 +605,18 @@ The Result popup and Double Up screen resolve display names through `playerNames
 Game result modal:
 
 ```txt
+Winner
+Loser
+Winner Score
 Double Up
-Play Again -> /game?players=...&twoPairRate=...&restart=Date.now()
+Play Again -> /game?players=...&onePairRate=...&restart=Date.now()
 Settings   -> /?players=...
 ```
 
 DoubleUp FINISHED screen:
 
 ```txt
-Play Again -> /game?players=...&twoPairRate=...&restart=Date.now()
+Play Again -> /game?players=...&onePairRate=...&restart=Date.now()
 Settings   -> /?players=...
 ```
 
@@ -663,29 +671,29 @@ import SettingsPage from "./settings/page";
 
 ```txt
 players: at least 2, non-empty, unique
-twoPairRate: integer string, > 0
+onePairRate: integer string, > 0
 ```
 
 Then it routes to:
 
 ```txt
-/game?players=<JSON encoded string array>&twoPairRate=<integer>
+/game?players=<JSON encoded string array>&onePairRate=<integer>
 ```
 
 `app/game/page.tsx` parses these query params and passes them to `GameScreen`.
+It still accepts deprecated `twoPairRate` as a fallback when `onePairRate` is missing.
 
 Settings also reads optional `players` query from `window.location.search` in a client effect and restores only player names. It does not restore rate.
 
 ## Hidden Dependency
 
-`calculateScore(hand, twoPairRate)` treats the configured `twoPairRate` as the value for `TWO_PAIR`, then derives base score:
+`calculateScore(hand, onePairRate)` treats the configured `onePairRate` as the value for `ONE_PAIR`:
 
 ```txt
-baseScore = twoPairRate / 2
-score = baseScore * MULTIPLIERS[hand]
+score = onePairRate * MULTIPLIERS[hand]
 ```
 
-If `twoPairRate` is odd, other hand scores can become fractional. Current settings validation only requires integer input and `> 0`; it does not require even numbers.
+Settings validation requires integer input and `> 0`. Because `ONE_PAIR` is multiplier 1, derived scores remain integer for integer input.
 
 ## Deprecated
 
@@ -693,10 +701,12 @@ Older docs that describe fixed base score only are deprecated. Default still exi
 
 ```txt
 BASE_SCORE = 100
-default twoPairRate = 200
+default onePairRate = 100
 ```
 
 But normal flow gets the rate from settings.
+
+Deprecated: older docs and legacy URLs describe `twoPairRate` as the score basis. Current UI writes `onePairRate`; `twoPairRate` is read only as a compatibility fallback.
 
 ---
 
@@ -1061,13 +1071,13 @@ The old inline `Result` section has been removed. Main Game now always shows a b
 For each player:
   dice values
   current hand
-  score from calculateScore(hand, twoPairRate)
+  score from calculateScore(hand, onePairRate)
 
 Before a player's 1st Roll:
   ROLL前
 ```
 
-The final action popup is now titled `Game Complete`; it does not duplicate the per-player result cards.
+The final action popup is titled `Game Complete`; it shows Winner, Loser, and Winner Score, then offers Double Up / Play Again / Settings.
 
 `judgeHand` checks stronger hands first, so overlapping hand conditions resolve to the higher hand.
 

@@ -98,14 +98,14 @@ const parsePositiveIntegerParam = (
 
 const buildGameUrl = (
   playerNames: string[],
-  twoPairRate: number
+  onePairRate: number
 ) => {
   const params =
     new URLSearchParams({
       players:
         JSON.stringify(playerNames),
-      twoPairRate:
-        String(twoPairRate),
+      onePairRate:
+        String(onePairRate),
       restart:
         String(Date.now()),
     });
@@ -141,7 +141,7 @@ export const DoubleUpScreen =
     loserIndexes: storedLoserIndexes,
     score: storedScore,
     playerNames: storedPlayerNames,
-    twoPairRate: storedTwoPairRate,
+    onePairRate: storedOnePairRate,
   } = useDoubleUpStore();
 
   const queryWinnerIndexes =
@@ -180,10 +180,11 @@ export const DoubleUpScreen =
       [searchParams]
     );
 
-  const queryTwoPairRate =
+  const queryOnePairRate =
     useMemo(
       () =>
         parsePositiveIntegerParam(
+          searchParams.get("onePairRate") ??
           searchParams.get("twoPairRate")
         ),
       [searchParams]
@@ -205,9 +206,9 @@ export const DoubleUpScreen =
     queryScore ??
     storedScore;
 
-  const twoPairRate =
-    queryTwoPairRate ??
-    storedTwoPairRate;
+  const onePairRate =
+    queryOnePairRate ??
+    storedOnePairRate;
 
   const getPlayerName = (
     playerIndex: number
@@ -252,7 +253,7 @@ export const DoubleUpScreen =
 
   const canRestart =
     playerNames.length >= 2 &&
-    twoPairRate > 0;
+    onePairRate > 0;
 
   const handleRoll = () => {
     if (!choice || isRolling) {
@@ -763,7 +764,7 @@ export const DoubleUpScreen =
                 router.push(
                   buildGameUrl(
                     playerNames,
-                    twoPairRate
+                    onePairRate
                   )
                 );
               }}

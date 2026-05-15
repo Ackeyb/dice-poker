@@ -33,21 +33,21 @@ import {
 
 type Props = {
   playerNames?: string[];
-  twoPairRate?: number;
+  onePairRate?: number;
 };
 
-const DEFAULT_TWO_PAIR_RATE = 200;
+const DEFAULT_ONE_PAIR_RATE = 100;
 
 const buildGameUrl = (
   playerNames: string[],
-  twoPairRate: number
+  onePairRate: number
 ) => {
   const params =
     new URLSearchParams({
       players:
         JSON.stringify(playerNames),
-      twoPairRate:
-        String(twoPairRate),
+      onePairRate:
+        String(onePairRate),
       restart:
         String(Date.now()),
     });
@@ -73,7 +73,7 @@ const buildDoubleUpUrl = (
     loserIndexes: number[];
     score: number;
     playerNames: string[];
-    twoPairRate: number;
+    onePairRate: number;
   }
 ) => {
   const params =
@@ -86,8 +86,8 @@ const buildDoubleUpUrl = (
         String(data.score),
       players:
         JSON.stringify(data.playerNames),
-      twoPairRate:
-        String(data.twoPairRate),
+      onePairRate:
+        String(data.onePairRate),
       start:
         String(Date.now()),
     });
@@ -131,7 +131,7 @@ const hasPlayerRolledAtLeastOnce = (
 
 export const GameScreen = ({
   playerNames,
-  twoPairRate,
+  onePairRate,
 }: Props) => {
   const { state, dispatch } = useGameEngine(
     playerNames
@@ -192,8 +192,8 @@ export const GameScreen = ({
   const currentPlayerNames =
     state.players.map(player => player.name);
 
-  const effectiveTwoPairRate =
-    twoPairRate ?? DEFAULT_TWO_PAIR_RATE;
+  const effectiveOnePairRate =
+    onePairRate ?? DEFAULT_ONE_PAIR_RATE;
 
   const roundNumber =
     getRoundNumber(state.phase);
@@ -231,7 +231,7 @@ export const GameScreen = ({
           hasRolled && result
             ? calculateScore(
                 result.hand,
-                effectiveTwoPairRate
+                effectiveOnePairRate
               )
             : null,
       };
@@ -241,6 +241,32 @@ export const GameScreen = ({
   winners,
   losers,
   } = getWinnersAndLosers(results);
+
+  const currentPlayerResult =
+    results.find(
+      result =>
+        result.playerIndex ===
+        state.currentPlayerIndex
+    );
+
+  const leaderLabel =
+    winners.length > 0
+      ? winners
+          .map(
+            winner =>
+              state.players[winner.playerIndex]?.name ??
+              `Player ${winner.playerIndex + 1}`
+          )
+          .join(", ")
+      : "-";
+
+  const leaderHandLabel =
+    winners.length > 0
+      ? winners[0].hand
+      : "-";
+
+  const currentPlayerHandLabel =
+    currentPlayerResult?.hand ?? "-";
   
   const isRound3Confirm =
     state.phase === "ROUND3_CONFIRM" &&
@@ -266,7 +292,7 @@ export const GameScreen = ({
     winners.length > 0
       ? calculateScore(
           winners[0].hand,
-          effectiveTwoPairRate
+          effectiveOnePairRate
         )
       : 0;
 
@@ -312,7 +338,7 @@ export const GameScreen = ({
 
       score: resultScore,
       playerNames: currentPlayerNames,
-      twoPairRate: effectiveTwoPairRate,
+      onePairRate: effectiveOnePairRate,
     };
 
     setDoubleUpData(doubleUpData);
@@ -326,7 +352,7 @@ export const GameScreen = ({
     router.push(
       buildGameUrl(
         currentPlayerNames,
-        effectiveTwoPairRate
+        effectiveOnePairRate
       )
     );
   };
@@ -614,7 +640,8 @@ export const GameScreen = ({
           <div
             className="
               mt-4
-              flex flex-wrap gap-3
+              grid grid-cols-5 gap-1.5
+              sm:gap-3
             "
           >
             {currentPlayer.dice.map((die, index) => (
@@ -628,9 +655,13 @@ export const GameScreen = ({
                   isWaitingNext
                 }
                 className="
+                  h-11 w-11
                   border-zinc-700
                   bg-zinc-100
+                  text-lg
                   text-zinc-950
+                  sm:h-16 sm:w-16
+                  sm:text-2xl
                 "
                 onClick={() => {
                   if (
@@ -809,7 +840,7 @@ export const GameScreen = ({
                     <div
                       className="
                         mt-3
-                        flex flex-wrap gap-1.5
+                        grid grid-cols-5 gap-1.5
                       "
                     >
                       {summary.player.dice.map(die => (
@@ -968,9 +999,89 @@ export const GameScreen = ({
               className="
                 grid gap-3
                 p-5
-                sm:grid-cols-2
               "
             >
+              <div
+                className="
+                  grid gap-3
+                  sm:grid-cols-2
+                "
+              >
+                <div
+                  className="
+                    rounded
+                    border border-red-900
+                    bg-red-950/40
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-red-300
+                    "
+                  >
+                    Current Leader
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-base
+                      font-black
+                      text-white
+                    "
+                  >
+                    {leaderLabel}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-400">
+                    Hand: {leaderHandLabel}
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    rounded
+                    border border-zinc-800
+                    bg-zinc-900
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-zinc-400
+                    "
+                  >
+                    This Player
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-base
+                      font-black
+                      text-white
+                    "
+                  >
+                    {currentPlayer.name}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-400">
+                    Hand: {currentPlayerHandLabel}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="
+                  grid gap-3
+                  sm:grid-cols-2
+                "
+              >
               <button
                 type="button"
                 className="
@@ -1017,6 +1128,7 @@ export const GameScreen = ({
               >
                 Skip
               </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1174,6 +1286,122 @@ export const GameScreen = ({
               "
             >
               全員の現在の出目・役・スコアは画面下部の一覧で確認できます。
+            </div>
+
+            <div
+              className="
+                mt-5
+                grid gap-3
+              "
+            >
+              <div
+                className="
+                  rounded
+                  border border-red-900
+                  bg-red-950/40
+                  p-3
+                "
+              >
+                <div
+                  className="
+                    text-[10px]
+                    font-black
+                    uppercase
+                    tracking-widest
+                    text-red-300
+                  "
+                >
+                  Winner
+                </div>
+                <div
+                  className="
+                    mt-1
+                    text-lg
+                    font-black
+                    text-white
+                  "
+                >
+                  {leaderLabel}
+                </div>
+              </div>
+
+              <div
+                className="
+                  grid gap-3
+                  sm:grid-cols-2
+                "
+              >
+                <div
+                  className="
+                    rounded
+                    border border-zinc-800
+                    bg-zinc-950
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-zinc-500
+                    "
+                  >
+                    Loser
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-base
+                      font-bold
+                      text-zinc-100
+                    "
+                  >
+                    {losers.length > 0
+                      ? losers
+                          .map(
+                            loser =>
+                              state.players[loser.playerIndex]
+                                ?.name ??
+                              `Player ${loser.playerIndex + 1}`
+                          )
+                          .join(", ")
+                      : "-"}
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    rounded
+                    border border-zinc-800
+                    bg-zinc-950
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-zinc-500
+                    "
+                  >
+                    Winner Score
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-base
+                      font-bold
+                      text-red-300
+                    "
+                  >
+                    {resultScore}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div

@@ -10,7 +10,7 @@ type DoubleUpState = {
 
   playerNames: string[];
 
-  twoPairRate: number;
+  onePairRate: number;
 
   setDoubleUpData: (
     data: {
@@ -18,7 +18,7 @@ type DoubleUpState = {
       loserIndexes: number[];
       score: number;
       playerNames: string[];
-      twoPairRate: number;
+      onePairRate: number;
     }
   ) => void;
 };
@@ -34,7 +34,7 @@ export const useDoubleUpStore =
 
     playerNames: [],
 
-    twoPairRate: 0,
+    onePairRate: 0,
 
     setDoubleUpData: (data) =>
       set({
@@ -50,7 +50,7 @@ export const useDoubleUpStore =
         playerNames:
           data.playerNames,
 
-        twoPairRate:
-          data.twoPairRate,
+        onePairRate:
+          data.onePairRate,
       }),
   }));

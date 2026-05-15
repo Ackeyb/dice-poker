@@ -80,7 +80,7 @@ backupPlayers
 playerCount
 dialogMode
 errorMessage
-twoPairRate
+onePairRate
 ```
 
 Validation:
@@ -91,7 +91,7 @@ players:
   - at least 2 non-empty names
   - unique names
 
-twoPairRate:
+onePairRate:
   - string of digits only
   - not blank
   - Number(value) > 0
@@ -100,10 +100,12 @@ twoPairRate:
 Start routes to:
 
 ```txt
-/game?players=<JSON encoded string array>&twoPairRate=<integer>
+/game?players=<JSON encoded string array>&onePairRate=<integer>
 ```
 
 The rate input uses `type="text"` and `inputMode="numeric"` so only integer-like strings are accepted while avoiding layout issues with wider values.
+The configured rate is the score for `ONE_PAIR`; all other hand scores are derived from `MULTIPLIERS`.
+The score preview list is vertical and compact so the Start section can stay at the bottom of the Settings screen without requiring normal mobile scrolling.
 
 Settings can also receive:
 
@@ -127,10 +129,12 @@ players:
   must be string[]
   length >= 2
 
-twoPairRate:
+onePairRate:
   /^\d+$/
   Number(rate) > 0
 ```
+
+Deprecated compatibility: `app/game/page.tsx` still accepts `twoPairRate` when `onePairRate` is missing.
 
 Invalid or missing params fall back to defaults inside the game layer.
 
@@ -246,6 +250,7 @@ ROUND2_ROLL
 
 ROUND3_CONFIRM
   popup asks 3rd Roll or Skip
+  popup shows current leader name/hand and the current player's hand
   3rd Roll -> SET_PHASE ROUND3_HOLD
   Skip -> ADVANCE_PHASE
 
@@ -298,7 +303,7 @@ Round unchanged:
   1950ms -> hide Player and call onComplete(triggerKey)
 ```
 
-The overlay uses `pointer-events-none`, so it should not block controls.
+The overlay is rendered as a modal dialog with `aria-modal="true"` and `pointer-events-auto`, so it blocks background controls while the cut-in is visible.
 
 Animation CSS is global in `styles/globals.css`:
 
@@ -414,28 +419,30 @@ getWinnersAndLosers(results)
 Score calculation:
 
 ```txt
-calculateScore(hand, twoPairRate)
+calculateScore(hand, onePairRate)
 ```
 
-`twoPairRate` is the configured score for `TWO_PAIR`.
+`onePairRate` is the configured score for `ONE_PAIR`.
 
 ```txt
-baseScore = twoPairRate / 2
-score = baseScore * MULTIPLIERS[hand]
+score = onePairRate * MULTIPLIERS[hand]
 ```
 
 Default fallback:
 
 ```txt
 BASE_SCORE = 100
-default twoPairRate = 200
+default onePairRate = 100
 ```
 
-Because settings only require integer input, odd `twoPairRate` values can produce fractional scores for other hands.
+Deprecated: older docs and legacy URLs describe `twoPairRate` as the score basis. Current UI writes `onePairRate`; `twoPairRate` is read only as a compatibility fallback.
 
 Game result modal currently provides:
 
 ```txt
+Winner
+Loser
+Winner Score
 Double Up
 Play Again
 Settings
@@ -460,7 +467,7 @@ winnerIndexes
 loserIndexes
 score
 playerNames
-twoPairRate
+onePairRate
 ```
 
 Route handoff:
@@ -472,9 +479,9 @@ GameScreen.startDoubleUp
        loserIndexes,
        score,
        playerNames,
-       twoPairRate
+       onePairRate
      })
-  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&twoPairRate=...")
+  -> router.push("/doubleup?winners=...&losers=...&score=...&players=...&onePairRate=...")
 ```
 
 Direct refresh/open of `/doubleup` first reads URL query params, then falls back to default store values:
@@ -484,7 +491,7 @@ winnerIndexes: []
 loserIndexes: []
 score: 0
 playerNames: []
-twoPairRate: 0
+onePairRate: 0
 ```
 
 Deprecated: older docs saying Double Up routing is Zustand-only are no longer complete. Zustand is still written, but URL params are now also part of the handoff.
@@ -507,7 +514,7 @@ Double Up FINISHED screen provides:
 
 ```txt
 Play Again:
-  enabled when playerNames.length >= 2 and twoPairRate > 0
+  enabled when playerNames.length >= 2 and onePairRate > 0
 
 Settings:
   routes to /?players=...
@@ -572,11 +579,12 @@ TurnCutIn:
 
 Settings -> Game:
   query param "players"
-  query param "twoPairRate"
+  query param "onePairRate"
+  deprecated fallback query param "twoPairRate"
 
 Game -> DoubleUp:
   Zustand store must be set before router.push("/doubleup")
-  store includes playerNames and twoPairRate for replay
+  store includes playerNames and onePairRate for replay
 
 CSS:
   app/layout.tsx imports ../styles/globals.css

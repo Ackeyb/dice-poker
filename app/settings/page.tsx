@@ -80,12 +80,12 @@ export default function SettingsPage() {
   ] = useState<string | null>(null);
 
   const [
-    twoPairRate,
-    setTwoPairRate,
+    onePairRate,
+    setOnePairRate,
   ] = useState("");
 
-  const numericTwoPairRate =
-    Number(twoPairRate);
+  const numericOnePairRate =
+    Number(onePairRate);
 
   useEffect(() => {
     const params =
@@ -188,9 +188,9 @@ export default function SettingsPage() {
         validatePlayers(players);
 
       if (
-        twoPairRate === "" ||
-        !/^\d+$/.test(twoPairRate) ||
-        Number(twoPairRate) <= 0
+        onePairRate === "" ||
+        !/^\d+$/.test(onePairRate) ||
+        Number(onePairRate) <= 0
       ) {
         throw new Error(
           "レートは1以上の整数で入力してください。"
@@ -200,7 +200,7 @@ export default function SettingsPage() {
       router.push(
         `/game?players=${encodeURIComponent(
           JSON.stringify(validated)
-        )}&twoPairRate=${twoPairRate}`
+        )}&onePairRate=${onePairRate}`
       );
     } catch (error) {
       if (error instanceof Error) {
@@ -212,18 +212,19 @@ export default function SettingsPage() {
   return (
     <main
       className="
-        min-h-screen
+        h-screen
+        overflow-hidden
         bg-zinc-950
         text-zinc-100
-        px-4 py-3
+        px-3 py-2
       "
     >
       <div
         className="
           mx-auto
-          flex min-h-[calc(100vh-24px)]
+          flex h-full
           max-w-xl flex-col
-          gap-3
+          gap-2
         "
       >
         <header className="shrink-0">
@@ -241,7 +242,7 @@ export default function SettingsPage() {
 
           <h1
             className="
-              text-3xl
+              text-2xl
               font-bold
               text-white
             "
@@ -255,7 +256,7 @@ export default function SettingsPage() {
             rounded
             border border-zinc-800
             bg-zinc-900
-            p-3
+            p-2.5
             shadow-xl
           "
         >
@@ -358,7 +359,7 @@ export default function SettingsPage() {
             rounded
             border border-zinc-800
             bg-zinc-900
-            p-3
+            p-2.5
             shadow-xl
           "
         >
@@ -379,13 +380,13 @@ export default function SettingsPage() {
                 Rate
               </h2>
               <p className="text-xs text-zinc-400">
-                2ペア基準
+                1 Pair base
               </p>
             </div>
 
             <label
               className="
-                flex min-w-40
+                flex min-w-36
                 flex-col gap-1
               "
             >
@@ -396,27 +397,27 @@ export default function SettingsPage() {
                   text-zinc-300
                 "
               >
-                Two Pair
+                One Pair
               </span>
               <input
                 type="text"
                 inputMode="numeric"
-                value={twoPairRate}
+                value={onePairRate}
                 onChange={event => {
                   const value =
                     event.target.value;
 
                   if (/^\d*$/.test(value)) {
-                    setTwoPairRate(value);
+                    setOnePairRate(value);
                   }
                 }}
                 className="
                   w-full
-                  min-w-40
+                  min-w-36
                   rounded
                   border border-zinc-700
                   bg-zinc-950
-                  px-3 py-2
+                  px-3 py-1.5
                   text-right
                   text-xl
                   font-bold
@@ -434,49 +435,51 @@ export default function SettingsPage() {
           <div
             className="
               mt-2
-              flex gap-2
-              overflow-x-auto
-              pb-1
+              grid gap-1
             "
           >
             {SCORE_PREVIEW_HANDS.map(hand => (
               <div
                 key={hand}
                 className="
-                  min-w-24
+                  flex items-center
+                  justify-between gap-3
                   rounded
                   border border-zinc-800
                   bg-zinc-950
-                  p-2
+                  px-2 py-1
                 "
               >
-                <div
-                  className="
-                    text-[10px]
-                    font-bold
-                    text-zinc-500
-                  "
-                >
-                  {hand}
+                <div className="min-w-0">
+                  <div
+                    className="
+                      truncate
+                      text-[11px]
+                      font-bold
+                      text-zinc-300
+                    "
+                  >
+                    {hand}
+                  </div>
+                  <div className="text-[10px] text-zinc-600">
+                    x{MULTIPLIERS[hand]}
+                  </div>
                 </div>
                 <div
                   className="
-                    mt-1
-                    text-base
+                    shrink-0
+                    text-sm
                     font-bold
                     text-red-300
                   "
                 >
-                  {twoPairRate &&
-                  numericTwoPairRate > 0
+                  {onePairRate &&
+                  numericOnePairRate > 0
                     ? calculateScore(
                         hand,
-                        numericTwoPairRate
+                        numericOnePairRate
                       )
                     : "-"}
-                </div>
-                <div className="text-[10px] text-zinc-600">
-                  x{MULTIPLIERS[hand]}
                 </div>
               </div>
             ))}
@@ -488,7 +491,9 @@ export default function SettingsPage() {
             rounded
             border border-zinc-800
             bg-zinc-900
-            p-3
+            mt-auto
+            shrink-0
+            p-2.5
           "
         >
           <div
@@ -518,7 +523,7 @@ export default function SettingsPage() {
               className="
                 rounded
                 bg-red-600
-                px-6 py-3
+                px-6 py-2.5
                 text-base
                 font-bold
                 text-white

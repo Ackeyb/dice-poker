@@ -112,9 +112,15 @@ export const TurnCutIn = ({
 
   return (
     <div
-      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={
+        step === "ROUND"
+          ? `Round ${roundNumber}`
+          : `${playerName} turn`
+      }
       className="
-        pointer-events-none
+        pointer-events-auto
         fixed inset-0 z-[60]
         flex items-center justify-center
         overflow-hidden

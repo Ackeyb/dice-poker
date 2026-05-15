@@ -38,8 +38,9 @@ function GamePageInner() {
     return undefined;
   }, [searchParams]);
 
-  const twoPairRate = useMemo(() => {
+  const onePairRate = useMemo(() => {
     const rateParam =
+      searchParams.get("onePairRate") ??
       searchParams.get("twoPairRate");
 
     if (!rateParam || !/^\d+$/.test(rateParam)) {
@@ -57,7 +58,7 @@ function GamePageInner() {
     <GameScreen
       key={searchParams.toString()}
       playerNames={playerNames}
-      twoPairRate={twoPairRate}
+      onePairRate={onePairRate}
     />
   );
 }
