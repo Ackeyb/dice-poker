@@ -491,7 +491,6 @@ export default function SettingsPage() {
             rounded
             border border-zinc-800
             bg-zinc-900
-            mt-auto
             shrink-0
             p-2.5
           "
