@@ -280,150 +280,190 @@ export const DoubleUpScreen =
     <div
       className="
         min-h-screen
-        bg-red-950
-        text-red-50
-        p-6
-        space-y-8
+        bg-zinc-950
+        px-4 py-6
+        text-zinc-100
       "
     >
 
-      <div className="text-5xl font-bold">
-        Double Up
-      </div>
-
-      <div
-        className="
-          grid gap-4
-          md:grid-cols-3
-          text-xl
-        "
-      >
-
-        <div className="border border-red-700 p-4 rounded bg-red-900">
-          Winners:
-          {" "}
-          {winnerIndexes
-            .map(i =>
-              getPlayerName(i)
-            )
-            .join(", ")}
-        </div>
-
-        <div className="border border-red-700 p-4 rounded bg-red-900">
-          Losers:
-          {" "}
-          {loserIndexes
-            .map(i =>
-              getPlayerName(i)
-            )
-            .join(", ")}
-        </div>
-
-        <div className="border border-red-700 p-4 rounded bg-red-900">
-          Score:
-          {" "}
-          <span className="text-3xl font-bold">
-            {currentScore}
-          </span>
-        </div>
-
-      </div>
-
       {status === "SELECT" && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-
-          <button
-            className={`
-              min-w-0
-              rounded
-              border-2
-              px-2 py-3
-              text-base font-bold
-              transition
-              sm:px-8 sm:py-4
-              sm:text-2xl
-              ${
-                choice === "HIGH"
-                  ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
-                  : "border-red-700 bg-red-950 text-red-200 hover:border-red-400"
-              }
-            `}
-            onClick={() => {
-              setChoice("HIGH");
-            }}
+        <div
+          className="
+            mx-auto
+            w-full max-w-xl
+            overflow-hidden
+            rounded-lg
+            border border-red-900
+            bg-zinc-950
+            shadow-2xl
+            shadow-red-950/40
+          "
+        >
+          <div
+            className="
+              border-b border-red-950
+              bg-gradient-to-r
+              from-red-950
+              via-zinc-900
+              to-zinc-950
+              p-5
+            "
           >
-            <span className="block">
-              High
-            </span>
-            <span className="block text-xs font-black tracking-widest sm:text-sm">
-              4 / 5 / 6
-            </span>
-            {choice === "HIGH" && (
-              <span className="block text-xs uppercase tracking-widest">
-                Selected
-              </span>
-            )}
-          </button>
+            <div
+              className="
+                text-xs
+                font-black
+                uppercase
+                tracking-widest
+                text-red-400
+              "
+            >
+              Double Up
+            </div>
+            <h1
+              className="
+                mt-2
+                text-3xl
+                font-black
+                text-white
+              "
+            >
+              High or Low
+            </h1>
+          </div>
 
-          <button
-            className={`
-              min-w-0
-              rounded
-              border-2
-              px-2 py-3
-              text-base font-bold
-              transition
-              sm:px-8 sm:py-4
-              sm:text-2xl
-              ${
-                choice === "LOW"
-                  ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
-                  : "border-red-700 bg-red-950 text-red-200 hover:border-red-400"
-              }
-            `}
-            onClick={() => {
-              setChoice("LOW");
-            }}
-          >
-            <span className="block">
-              Low
-            </span>
-            <span className="block text-xs font-black tracking-widest sm:text-sm">
-              1 / 2 / 3
-            </span>
-            {choice === "LOW" && (
-              <span className="block text-xs uppercase tracking-widest">
-                Selected
-              </span>
-            )}
-          </button>
+          <div className="grid gap-5 p-5">
+            <div
+              className="
+                rounded
+                border border-red-900
+                bg-red-950/40
+                p-5
+                text-center
+              "
+            >
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-300
+                "
+              >
+                Current Score
+              </div>
+              <div
+                className="
+                  mt-2
+                  text-5xl
+                  font-black
+                  text-white
+                "
+              >
+                {currentScore}
+              </div>
+            </div>
 
-          <button
-            disabled={
-              choice === null ||
-              isRolling
-            }
-            className={`
-              min-w-0
-              border border-red-200
-              px-2 py-3 rounded
-              text-base font-bold
-              bg-red-700
-              sm:px-10 sm:py-4
-              sm:text-2xl
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
 
-              ${
-                choice === null ||
-                isRolling
-                  ? "opacity-50"
-                  : ""
-              }
-            `}
-            onClick={handleRoll}
-          >
-            Roll
-          </button>
+              <button
+                className={`
+                  min-w-0
+                  rounded
+                  border-2
+                  px-2 py-3
+                  text-base font-bold
+                  transition
+                  sm:px-8 sm:py-4
+                  sm:text-2xl
+                  ${
+                    choice === "HIGH"
+                      ? "border-white bg-red-600 text-white shadow-xl shadow-red-500/20"
+                      : "border-red-900 bg-zinc-950 text-red-200 hover:border-red-500"
+                  }
+                `}
+                onClick={() => {
+                  setChoice("HIGH");
+                }}
+              >
+                <span className="block">
+                  High
+                </span>
+                <span className="block text-xs font-black tracking-widest sm:text-sm">
+                  4 / 5 / 6
+                </span>
+                {choice === "HIGH" && (
+                  <span className="block text-xs uppercase tracking-widest">
+                    Selected
+                  </span>
+                )}
+              </button>
 
+              <button
+                className={`
+                  min-w-0
+                  rounded
+                  border-2
+                  px-2 py-3
+                  text-base font-bold
+                  transition
+                  sm:px-8 sm:py-4
+                  sm:text-2xl
+                  ${
+                    choice === "LOW"
+                      ? "border-white bg-red-600 text-white shadow-xl shadow-red-500/20"
+                      : "border-red-900 bg-zinc-950 text-red-200 hover:border-red-500"
+                  }
+                `}
+                onClick={() => {
+                  setChoice("LOW");
+                }}
+              >
+                <span className="block">
+                  Low
+                </span>
+                <span className="block text-xs font-black tracking-widest sm:text-sm">
+                  1 / 2 / 3
+                </span>
+                {choice === "LOW" && (
+                  <span className="block text-xs uppercase tracking-widest">
+                    Selected
+                  </span>
+                )}
+              </button>
+
+              <button
+                disabled={
+                  choice === null ||
+                  isRolling
+                }
+                className={`
+                  min-w-0
+                  rounded
+                  border border-red-700
+                  bg-red-600
+                  px-2 py-3
+                  text-base font-bold
+                  text-white
+                  transition
+                  hover:bg-red-500
+                  sm:px-10 sm:py-4
+                  sm:text-2xl
+
+                  ${
+                    choice === null ||
+                    isRolling
+                      ? "opacity-50"
+                      : ""
+                  }
+                `}
+                onClick={handleRoll}
+              >
+                Roll
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -443,19 +483,19 @@ export const DoubleUpScreen =
               overflow-hidden
               rounded-lg
               border border-red-900
-              bg-red-950
-              text-red-50
+              bg-zinc-950
+              text-zinc-100
               shadow-2xl
-              shadow-red-950/50
+              shadow-red-950/40
             "
           >
             <div
               className="
-                border-b border-red-900
+                border-b border-red-950
                 bg-gradient-to-r
                 from-red-950
-                via-red-900
-                to-red-950
+                via-zinc-900
+                to-zinc-950
                 p-5
               "
             >
@@ -465,7 +505,7 @@ export const DoubleUpScreen =
                   font-black
                   uppercase
                   tracking-widest
-                  text-red-200
+                  text-red-400
                 "
               >
                 Double Up Failed
@@ -474,7 +514,7 @@ export const DoubleUpScreen =
               <h2
                 className="
                   mt-2
-                  text-4xl
+                   text-3xl
                   font-black
                   text-white
                 "
@@ -506,13 +546,13 @@ export const DoubleUpScreen =
               <div
                 className="
                   rounded
-                  border border-red-800
-                  bg-red-900
+                  border border-red-900
+                  bg-red-950/40
                   p-4
                   text-center
                 "
               >
-                <div className="text-sm text-red-200">
+                <div className="text-sm text-red-300">
                   Final Score
                 </div>
                 <div
@@ -564,20 +604,20 @@ export const DoubleUpScreen =
               max-w-md
               overflow-hidden
               rounded-lg
-              border border-red-700
-              bg-red-950
-              text-red-50
+              border border-red-900
+              bg-zinc-950
+              text-zinc-100
               shadow-2xl
-              shadow-red-950/50
+              shadow-red-950/40
             "
           >
             <div
               className="
-                border-b border-red-800
+                border-b border-red-950
                 bg-gradient-to-r
-                from-red-700
-                via-red-900
-                to-red-950
+                from-red-950
+                via-zinc-900
+                to-zinc-950
                 p-5
               "
             >
@@ -587,7 +627,7 @@ export const DoubleUpScreen =
                   font-black
                   uppercase
                   tracking-widest
-                  text-red-100
+                  text-red-400
                 "
               >
                 Double Up Success
@@ -596,7 +636,7 @@ export const DoubleUpScreen =
               <h2
                 className="
                   mt-2
-                  text-4xl
+                  text-3xl
                   font-black
                   text-white
                 "
@@ -628,13 +668,13 @@ export const DoubleUpScreen =
               <div
                 className="
                   rounded
-                  border border-red-800
-                  bg-red-900
+                  border border-red-900
+                  bg-red-950/40
                   p-4
                   text-center
                 "
               >
-                <div className="text-sm text-red-200">
+                <div className="text-sm text-red-300">
                   Current Score
                 </div>
                 <div
@@ -649,7 +689,7 @@ export const DoubleUpScreen =
                 </div>
               </div>
 
-              <div className="text-center text-sm text-red-100">
+              <div className="text-center text-sm text-zinc-300">
                 Continue?
               </div>
 
@@ -663,13 +703,13 @@ export const DoubleUpScreen =
                   type="button"
                   className="
                     rounded
-                    bg-red-500
+                    bg-red-600
                     px-6 py-4
                     text-lg
                     font-black
                     text-white
                     transition
-                    hover:bg-red-400
+                    hover:bg-red-500
                   "
                   onClick={handleContinue}
                 >
@@ -680,14 +720,14 @@ export const DoubleUpScreen =
                   type="button"
                   className="
                     rounded
-                    border border-red-300
-                    bg-red-950
+                    border border-zinc-700
+                    bg-zinc-950
                     px-6 py-4
                     text-lg
                     font-black
-                    text-red-50
+                    text-zinc-100
                     transition
-                    hover:border-white
+                    hover:border-red-500
                   "
                   onClick={handleFinish}
                 >

@@ -537,6 +537,8 @@ Finish moves status to FINISHED
 
 The Double Up choice buttons are a three-column mobile grid. High displays `4 / 5 / 6`; Low displays `1 / 2 / 3`.
 
+Double Up does not render a separate top summary for main-game Winner / Loser / Score. The SELECT screen uses the same dark card shell as Final Result and shows only the current Double Up score plus High / Low / Roll controls.
+
 Double Up roll also uses `DiceRollOverlay`; actual value comes from dice-box animation result.
 
 For multiple dice, `DiceRollOverlay` intentionally splits rendering into one `Dice3D` canvas per die to reduce visual overlap. Single-die Double Up keeps the single `Dice3D` path.
@@ -558,6 +560,14 @@ Settings:
 ```
 
 Winner / Loser are displayed inside the same Double Up Complete result card so they are read as the final Double Up outcome, not as a separate main-game result block. `isSuccess` decides whether the original winnerIndexes or loserIndexes are displayed as final winners.
+
+The Double Up visual direction is intentionally aligned with Settings / Main Game:
+
+```txt
+page background: zinc-950
+surface: zinc-950 card
+accent: red borders / red gradient header / red score panel
+```
 
 ---
 
@@ -688,14 +698,19 @@ Double Up FINISHED Play Again / Settings
 
 # Latest Update: Double Up Success Popup
 
-Double Up now has stronger selected-state styling for High / Low.
+Double Up now uses the same dark card language across SELECT, success popup, failure popup, and FINISHED.
 
 ```txt
 selected choice:
-  bright red button
+  red button
   white border
-  red shadow
+  restrained red shadow
   Selected label
+
+not selected:
+  zinc card
+  red border
+  red text
 ```
 
 After a successful roll:

@@ -626,6 +626,10 @@ Settings   -> /?players=...
 
 Winner / Loser are intentionally nested inside the Double Up Complete result card. This keeps them attached to the final Double Up outcome instead of looking like a separate main-game result section. `isSuccess` swaps the original winnerIndexes / loserIndexes for the final outcome.
 
+Do not reintroduce the old top-level Winner / Loser / Score summary on the Double Up page. It duplicated information and made the final result ambiguous.
+
+Double Up SELECT, success popup, failure popup, and FINISHED should share the same dark `zinc-950` card language with red accents, matching Settings and Main Game.
+
 Settings route intentionally carries player information only. Rate is not inherited and remains blank.
 
 ## Route Name
@@ -959,13 +963,13 @@ High / Low selection is intentionally visually strong.
 ```txt
 selected:
   border-white
-  bg-red-500
-  shadow-red-500/30
+  bg-red-600
+  shadow-red-500/20
   Selected label
 
 not selected:
-  border-red-700
-  bg-red-950
+  border-red-900
+  bg-zinc-950
   text-red-200
 ```
 
