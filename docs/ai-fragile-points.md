@@ -641,6 +641,15 @@ success     -> currentScore doubles
 failure     -> currentScore stays as-is, winner/loser display swaps via isSuccess
 ```
 
+High / Low choice buttons intentionally include range captions:
+
+```txt
+High: 4 / 5 / 6
+Low:  1 / 2 / 3
+```
+
+The SELECT controls use a three-column grid so High, Low, and Roll fit on one mobile row.
+
 ---
 
 # 10. Settings / Query Param Dependency
@@ -685,6 +694,8 @@ It still accepts deprecated `twoPairRate` as a fallback when `onePairRate` is mi
 
 Settings also reads optional `players` query from `window.location.search` in a client effect and restores only player names. It does not restore rate.
 
+On browser reload, Settings detects `PerformanceNavigationTiming.type === "reload"`, removes query params with `window.history.replaceState`, and skips player restoration. Do not remove this without rechecking the requirement that reloading Settings clears carried player data while normal navigation from other screens still restores it.
+
 ## Hidden Dependency
 
 `calculateScore(hand, onePairRate)` treats the configured `onePairRate` as the value for `ONE_PAIR`:
@@ -694,6 +705,22 @@ score = onePairRate * MULTIPLIERS[hand]
 ```
 
 Settings validation requires integer input and `> 0`. Because `ONE_PAIR` is multiplier 1, derived scores remain integer for integer input.
+
+Current multiplier values:
+
+```txt
+PINSORO: 100
+FIVE_DICE: 50
+FOUR_DICE: 25
+STRAIGHT: 15
+FULL_HOUSE: 10
+THREE_DICE: 5
+TWO_PAIR: 2
+ONE_PAIR: 1
+BUTA: 0
+```
+
+Hand display labels are centralized in `features/game/constants/handLabels.ts`. Keep internal `HandRank` ids stable and translate at render time.
 
 ## Deprecated
 

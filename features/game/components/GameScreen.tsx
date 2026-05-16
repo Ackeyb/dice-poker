@@ -7,6 +7,8 @@ import { getWinnersAndLosers }
 from "../utils/getWinnersAndLosers";
 import { calculateScore }
 from "../utils/calculateScore";
+import { HAND_LABELS }
+from "../constants/handLabels";
 import { useRouter }
 from "next/navigation";
 import {
@@ -262,11 +264,13 @@ export const GameScreen = ({
 
   const leaderHandLabel =
     winners.length > 0
-      ? winners[0].hand
+      ? HAND_LABELS[winners[0].hand]
       : "-";
 
   const currentPlayerHandLabel =
-    currentPlayerResult?.hand ?? "-";
+    currentPlayerResult
+      ? HAND_LABELS[currentPlayerResult.hand]
+      : "-";
   
   const isRound3Confirm =
     state.phase === "ROUND3_CONFIRM" &&
@@ -686,7 +690,7 @@ export const GameScreen = ({
           <div
             className="
               mt-4
-              flex flex-wrap gap-3
+              flex flex-wrap gap-4
             "
           >
             <button
@@ -698,6 +702,7 @@ export const GameScreen = ({
               className={`
                 rounded
                 bg-red-600
+                min-w-36
                 px-6 py-3
                 font-bold
                 text-white
@@ -714,7 +719,7 @@ export const GameScreen = ({
               `}
               onClick={handleRoll}
             >
-              Roll
+              サイコロを振る
             </button>
 
             <button
@@ -722,6 +727,7 @@ export const GameScreen = ({
                 rounded
                 border border-zinc-700
                 bg-zinc-950
+                min-w-36
                 px-6 py-3
                 font-bold
                 text-zinc-100
@@ -886,7 +892,9 @@ export const GameScreen = ({
                             text-white
                           "
                         >
-                          {summary.hand}
+                          {summary.hand
+                            ? HAND_LABELS[summary.hand]
+                            : "-"}
                         </div>
                       </div>
 
@@ -1277,20 +1285,6 @@ export const GameScreen = ({
             <div
               className="
                 mt-4
-                rounded
-                border border-zinc-800
-                bg-zinc-950
-                p-3
-                text-sm
-                text-zinc-300
-              "
-            >
-              全員の現在の出目・役・スコアは画面下部の一覧で確認できます。
-            </div>
-
-            <div
-              className="
-                mt-5
                 grid gap-3
               "
             >

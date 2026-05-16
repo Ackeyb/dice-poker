@@ -330,15 +330,18 @@ export const DoubleUpScreen =
       </div>
 
       {status === "SELECT" && (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
 
           <button
             className={`
+              min-w-0
               rounded
               border-2
-              px-8 py-4
-              text-2xl font-bold
+              px-2 py-3
+              text-base font-bold
               transition
+              sm:px-8 sm:py-4
+              sm:text-2xl
               ${
                 choice === "HIGH"
                   ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
@@ -352,6 +355,9 @@ export const DoubleUpScreen =
             <span className="block">
               High
             </span>
+            <span className="block text-xs font-black tracking-widest sm:text-sm">
+              4 / 5 / 6
+            </span>
             {choice === "HIGH" && (
               <span className="block text-xs uppercase tracking-widest">
                 Selected
@@ -361,11 +367,14 @@ export const DoubleUpScreen =
 
           <button
             className={`
+              min-w-0
               rounded
               border-2
-              px-8 py-4
-              text-2xl font-bold
+              px-2 py-3
+              text-base font-bold
               transition
+              sm:px-8 sm:py-4
+              sm:text-2xl
               ${
                 choice === "LOW"
                   ? "border-white bg-red-500 text-white shadow-xl shadow-red-500/30"
@@ -378,6 +387,9 @@ export const DoubleUpScreen =
           >
             <span className="block">
               Low
+            </span>
+            <span className="block text-xs font-black tracking-widest sm:text-sm">
+              1 / 2 / 3
             </span>
             {choice === "LOW" && (
               <span className="block text-xs uppercase tracking-widest">
@@ -392,10 +404,13 @@ export const DoubleUpScreen =
               isRolling
             }
             className={`
+              min-w-0
               border border-red-200
-              px-10 py-4 rounded
-              text-2xl font-bold
+              px-2 py-3 rounded
+              text-base font-bold
               bg-red-700
+              sm:px-10 sm:py-4
+              sm:text-2xl
 
               ${
                 choice === null ||

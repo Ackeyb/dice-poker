@@ -7,6 +7,7 @@ import {
 } from "react";
 import { calculateScore } from "@/features/game/utils/calculateScore";
 import { MULTIPLIERS } from "@/features/game/constants/multipliers";
+import { HAND_LABELS } from "@/features/game/constants/handLabels";
 import { HandRank } from "@/features/game/types/hand";
 
 type DialogMode = "players" | null;
@@ -88,6 +89,22 @@ export default function SettingsPage() {
     Number(onePairRate);
 
   useEffect(() => {
+    const navigationEntry =
+      performance.getEntriesByType(
+        "navigation"
+      )[0] as
+        | PerformanceNavigationTiming
+        | undefined;
+
+    if (navigationEntry?.type === "reload") {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname
+      );
+      return;
+    }
+
     const params =
       new URLSearchParams(
         window.location.search
@@ -459,7 +476,7 @@ export default function SettingsPage() {
                       text-zinc-300
                     "
                   >
-                    {hand}
+                    {HAND_LABELS[hand]}
                   </div>
                   <div className="text-[10px] text-zinc-600">
                     x{MULTIPLIERS[hand]}

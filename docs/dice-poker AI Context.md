@@ -107,6 +107,34 @@ The rate input uses `type="text"` and `inputMode="numeric"` so only integer-like
 The configured rate is the score for `ONE_PAIR`; all other hand scores are derived from `MULTIPLIERS`.
 The score preview list is vertical and compact so the Start section can stay at the bottom of the Settings screen without requiring normal mobile scrolling.
 
+Current score multipliers:
+
+```txt
+PINSORO: 100
+FIVE_DICE: 50
+FOUR_DICE: 25
+STRAIGHT: 15
+FULL_HOUSE: 10
+THREE_DICE: 5
+TWO_PAIR: 2
+ONE_PAIR: 1
+BUTA: 0
+```
+
+Hand names are displayed through `HAND_LABELS`:
+
+```txt
+PINSORO -> ピンゾロ
+FIVE_DICE -> ５ダイス
+FOUR_DICE -> ４ダイス
+STRAIGHT -> ストレート
+FULL_HOUSE -> フルハウス
+THREE_DICE -> ３ダイス
+TWO_PAIR -> ２ペア
+ONE_PAIR -> １ペア
+BUTA -> クソザコ
+```
+
 Settings can also receive:
 
 ```txt
@@ -116,6 +144,7 @@ Settings can also receive:
 This is used by the Settings return buttons. Only player names are restored; rate remains blank by design.
 
 The restoration is done in a client `useEffect` using `window.location.search` and a `setTimeout(..., 0)` to avoid synchronous setState inside the effect.
+If the Settings page itself is reloaded, the effect detects `PerformanceNavigationTiming.type === "reload"`, removes query params with `window.history.replaceState`, and does not restore players. Navigation from other screens with `/?players=...` still restores player names.
 
 ---
 
@@ -506,6 +535,8 @@ Continue resets choice / rolledValue / isSuccess
 Finish moves status to FINISHED
 ```
 
+The Double Up choice buttons are a three-column mobile grid. High displays `4 / 5 / 6`; Low displays `1 / 2 / 3`.
+
 Double Up roll also uses `DiceRollOverlay`; actual value comes from dice-box animation result.
 
 For multiple dice, `DiceRollOverlay` intentionally splits rendering into one `Dice3D` canvas per die to reduce visual overlap. Single-die Double Up keeps the single `Dice3D` path.
@@ -768,7 +799,9 @@ Before first roll:
   ROLL前
 ```
 
-The finish popup title is `Game Complete`; detailed per-player outcome is read from the `Current Hands` summary.
+The finish popup title is `Game Complete`; it shows Winner, Loser, and Winner Score. The old explanatory text about checking the bottom list has been removed.
+
+The main Roll button display text is `サイコロを振る`. Roll and Next share the same minimum width and a slightly larger gap.
 
 Hand priority still comes from `judgeHand` order. Stronger hands are checked before weaker hands.
 
