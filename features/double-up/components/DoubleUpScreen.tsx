@@ -703,69 +703,91 @@ export const DoubleUpScreen =
 
         <div
           className="
-            space-y-4
-            text-xl
-            border border-red-700
-            bg-red-900
-            p-6 rounded
+            mx-auto
+            w-full max-w-xl
+            overflow-hidden
+            rounded-lg
+            border border-red-900
+            bg-zinc-950
+            text-red-50
+            shadow-2xl
+            shadow-red-950/40
           "
         >
 
-          <div className="text-4xl font-bold">
-            Final Result
+          <div
+            className="
+              border-b border-red-950
+              bg-gradient-to-r
+              from-red-950
+              via-zinc-900
+              to-zinc-950
+              p-5
+            "
+          >
+            <div
+              className="
+                text-xs
+                font-black
+                uppercase
+                tracking-widest
+                text-red-400
+              "
+            >
+              Double Up Complete
+            </div>
+
+            <h2
+              className="
+                mt-2
+                text-3xl
+                font-black
+                text-white
+              "
+            >
+              Final Result
+            </h2>
           </div>
 
-          <div>
-            Final Score:
-            {" "}
-            {currentScore}
-          </div>
-
-          <div>
-            Winner:
-            {" "}
-
-            {isSuccess
-              ? winnerIndexes
-                  .map(
-                    i =>
-                      getPlayerName(i)
-                  )
-                  .join(", ")
-
-              : loserIndexes
-                  .map(
-                    i =>
-                      getPlayerName(i)
-                  )
-                  .join(", ")}
-          </div>
-
-          <div>
-            Loser:
-            {" "}
-
-            {isSuccess
-              ? loserIndexes
-                  .map(
-                    i =>
-                      getPlayerName(i)
-                  )
-                  .join(", ")
-
-              : winnerIndexes
-                  .map(
-                    i =>
-                      getPlayerName(i)
-                  )
-                  .join(", ")}
+          <div className="grid gap-5 p-5">
+            <div
+              className="
+                rounded
+                border border-red-900
+                bg-red-950/40
+                p-5
+                text-center
+              "
+            >
+              <div
+                className="
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-red-300
+                "
+              >
+                Final Score
+              </div>
+              <div
+                className="
+                  mt-2
+                  text-6xl
+                  font-black
+                  text-white
+                "
+              >
+                {currentScore}
+              </div>
+            </div>
           </div>
 
           <div
             className="
-              flex flex-col gap-3
-              pt-3
-              sm:flex-row
+              grid gap-3
+              px-5 pb-5
+              sm:grid-cols-2
             "
           >
             <button
@@ -786,8 +808,8 @@ export const DoubleUpScreen =
               className={`
                 rounded
                 bg-red-600
-                px-6 py-3
-                font-bold
+                px-6 py-4
+                font-black
                 text-white
                 transition
                 hover:bg-red-500
@@ -807,13 +829,13 @@ export const DoubleUpScreen =
               }}
               className="
                 rounded
-                border border-red-300
-                bg-red-950
-                px-6 py-3
-                font-bold
-                text-red-50
+                border border-zinc-700
+                bg-zinc-950
+                px-6 py-4
+                font-black
+                text-zinc-100
                 transition
-                hover:border-white
+                hover:border-red-500
               "
             >
               Settings

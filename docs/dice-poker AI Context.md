@@ -279,7 +279,7 @@ ROUND2_ROLL
 
 ROUND3_CONFIRM
   popup asks 3rd Roll or Skip
-  popup shows current leader name/hand and the current player's hand
+  popup shows current leader name/hand/score and the current player's hand/score
   3rd Roll -> SET_PHASE ROUND3_HOLD
   Skip -> ADVANCE_PHASE
 
@@ -544,6 +544,8 @@ For multiple dice, `DiceRollOverlay` intentionally splits rendering into one `Di
 Double Up FINISHED screen provides:
 
 ```txt
+Final Score only
+
 Play Again:
   enabled when playerNames.length >= 2 and onePairRate > 0
 
@@ -551,6 +553,8 @@ Settings:
   routes to /?players=...
   if no playerNames, routes to /
 ```
+
+Deprecated: the FINISHED screen used to display Winner / Loser from the main game handoff. That was removed because it confused the main-game outcome with the final Double Up result.
 
 ---
 

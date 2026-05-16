@@ -303,7 +303,7 @@ isRound3Confirm =
   completedCutInKey === cutInTriggerKey
 ```
 
-The popup derives current leader data from `getWinnersAndLosers(results)` and current player hand from `getPlayerResults(state.players)`.
+The popup derives current leader data from `getWinnersAndLosers(results)` and current player hand from `getPlayerResults(state.players)`. It also displays both scores using `calculateScore(..., effectiveOnePairRate)`.
 
 ## Hidden Dependency
 
@@ -616,9 +616,12 @@ Settings   -> /?players=...
 DoubleUp FINISHED screen:
 
 ```txt
+Final Score only
 Play Again -> /game?players=...&onePairRate=...&restart=Date.now()
 Settings   -> /?players=...
 ```
+
+Deprecated: FINISHED previously displayed Winner / Loser derived from the main game winner/loser indexes. That display is intentionally removed so the screen presents only the final Double Up result.
 
 Settings route intentionally carries player information only. Rate is not inherited and remains blank.
 

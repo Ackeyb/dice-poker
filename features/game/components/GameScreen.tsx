@@ -267,9 +267,25 @@ export const GameScreen = ({
       ? HAND_LABELS[winners[0].hand]
       : "-";
 
+  const leaderScoreLabel =
+    winners.length > 0
+      ? calculateScore(
+          winners[0].hand,
+          effectiveOnePairRate
+        )
+      : "-";
+
   const currentPlayerHandLabel =
     currentPlayerResult
       ? HAND_LABELS[currentPlayerResult.hand]
+      : "-";
+
+  const currentPlayerScoreLabel =
+    currentPlayerResult
+      ? calculateScore(
+          currentPlayerResult.hand,
+          effectiveOnePairRate
+        )
       : "-";
   
   const isRound3Confirm =
@@ -1047,6 +1063,9 @@ export const GameScreen = ({
                   <div className="mt-1 text-xs text-zinc-400">
                     Hand: {leaderHandLabel}
                   </div>
+                  <div className="mt-0.5 text-xs text-red-200">
+                    Score: {leaderScoreLabel}
+                  </div>
                 </div>
 
                 <div
@@ -1080,6 +1099,9 @@ export const GameScreen = ({
                   </div>
                   <div className="mt-1 text-xs text-zinc-400">
                     Hand: {currentPlayerHandLabel}
+                  </div>
+                  <div className="mt-0.5 text-xs text-red-200">
+                    Score: {currentPlayerScoreLabel}
                   </div>
                 </div>
               </div>
