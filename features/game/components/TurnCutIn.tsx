@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  useSoundEffects,
+} from "@/shared/hooks/useSoundEffects";
+import {
   useEffect,
   useRef,
   useState,
@@ -34,6 +37,9 @@ export const TurnCutIn = ({
   const previousRoundRef =
     useRef<number | null>(null);
 
+  const { play } =
+    useSoundEffects();
+
   useEffect(() => {
     if (!roundNumber) {
       return;
@@ -53,6 +59,7 @@ export const TurnCutIn = ({
             roundNumber;
 
           setStep("ROUND");
+          play("cutin");
         }, 0)
       );
 
@@ -65,6 +72,7 @@ export const TurnCutIn = ({
       timers.push(
         setTimeout(() => {
           setStep("PLAYER");
+          play("cutin");
         }, 2175)
       );
 
@@ -78,6 +86,7 @@ export const TurnCutIn = ({
       timers.push(
         setTimeout(() => {
           setStep("PLAYER");
+          play("cutin");
         }, 0)
       );
 
@@ -94,7 +103,7 @@ export const TurnCutIn = ({
         clearTimeout(timer);
       });
     };
-  }, [onComplete, roundNumber, triggerKey]);
+  }, [onComplete, play, roundNumber, triggerKey]);
 
   if (!step || !roundNumber) {
     return null;

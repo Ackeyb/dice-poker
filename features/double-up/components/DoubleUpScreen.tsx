@@ -15,6 +15,9 @@ import {
 import {
   DiceRollOverlay,
 } from "@/shared/components/Dice/DiceRollOverlay";
+import {
+  useSoundEffects,
+} from "@/shared/hooks/useSoundEffects";
 
 import {
   useRouter,
@@ -23,6 +26,7 @@ import {
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -255,17 +259,54 @@ export const DoubleUpScreen =
     playerNames.length >= 2 &&
     onePairRate > 0;
 
+  const {
+    play,
+    stop,
+  } = useSoundEffects();
+
+  const playDoubleUpBgm = useCallback(() => {
+    play("doubleUpBgm", {
+      loop: true,
+      restart: false,
+      volume: 0.55,
+    });
+  }, [play]);
+
+  useEffect(() => {
+    if (status === "SELECT") {
+      playDoubleUpBgm();
+      return;
+    }
+
+    stop("doubleUpBgm");
+  }, [playDoubleUpBgm, status, stop]);
+
+  useEffect(() => {
+    if (status !== "ROLLED") {
+      return;
+    }
+
+    play(
+      isSuccess
+        ? "doubleUpSuccess"
+        : "doubleUpFailure"
+    );
+  }, [isSuccess, play, status]);
+
   const handleRoll = () => {
     if (!choice || isRolling) {
       return;
     }
 
+    playDoubleUpBgm();
+    play("diceRoll");
     setOverlayValues([1]);
     setIsRollOverlayOpen(true);
   };
 
   const completeRoll = useCallback((values: number[]) => {
     setIsRollOverlayOpen(false);
+    stop("doubleUpBgm");
 
     const value =
       values[0];
@@ -273,7 +314,12 @@ export const DoubleUpScreen =
     if (typeof value === "number") {
       resolveRoll(value);
     }
-  }, [resolveRoll]);
+  }, [resolveRoll, stop]);
+
+  const finishDoubleUp = () => {
+    stop("doubleUpBgm");
+    handleFinish();
+  };
 
   return (
 
@@ -384,6 +430,7 @@ export const DoubleUpScreen =
                   }
                 `}
                 onClick={() => {
+                  playDoubleUpBgm();
                   setChoice("HIGH");
                 }}
               >
@@ -417,6 +464,7 @@ export const DoubleUpScreen =
                   }
                 `}
                 onClick={() => {
+                  playDoubleUpBgm();
                   setChoice("LOW");
                 }}
               >
@@ -580,7 +628,7 @@ export const DoubleUpScreen =
                   transition
                   hover:bg-red-500
                 "
-                onClick={handleFinish}
+                onClick={finishDoubleUp}
               >
                 Finish
               </button>
@@ -729,7 +777,7 @@ export const DoubleUpScreen =
                     transition
                     hover:border-red-500
                   "
-                  onClick={handleFinish}
+                  onClick={finishDoubleUp}
                 >
                   Finish
                 </button>

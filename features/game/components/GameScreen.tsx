@@ -24,6 +24,9 @@ import {
   DiceRollPreloader,
 } from "@/shared/components/Dice/DiceRollPreloader";
 import {
+  useSoundEffects,
+} from "@/shared/hooks/useSoundEffects";
+import {
   TurnCutIn,
 } from "./TurnCutIn";
 import {
@@ -176,6 +179,9 @@ export const GameScreen = ({
 
   const pendingRollIndexesRef =
     useRef<number[]>([]);
+
+  const { play } =
+    useSoundEffects();
   
   useEffect(() => {
     const id =
@@ -330,6 +336,12 @@ export const GameScreen = ({
   const showResultActions =
     state.phase === "RESULT" &&
     !resultActionDismissed;
+
+  useEffect(() => {
+    if (showResultActions) {
+      play("mainResult");
+    }
+  }, [play, showResultActions]);
   
   const router = useRouter();
 
@@ -394,6 +406,8 @@ export const GameScreen = ({
         state: "ROLLING",
       },
     });
+
+    play("diceRoll");
 
     pendingRollPhaseRef.current =
       state.phase;

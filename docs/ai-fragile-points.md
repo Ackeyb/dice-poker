@@ -13,6 +13,7 @@ shared/
 styles/
 types/
 public/assets/dice-box/
+public/sound/
 ```
 
 ---
@@ -493,7 +494,71 @@ The visible animation value and actual state value must come from the same dice-
 
 ---
 
-# 8. Cutoff Logic
+# 8. Sound Effects / Autoplay Policy
+
+## Severity
+
+HIGH
+
+## Files
+
+```txt
+shared/hooks/useSoundEffects.ts
+features/game/components/TurnCutIn.tsx
+features/game/components/GameScreen.tsx
+features/double-up/components/DoubleUpScreen.tsx
+public/sound/
+```
+
+## Current Behavior
+
+`useSoundEffects` centralizes audio preload and playback.
+
+```txt
+Audio(src)
+audio.preload = "auto"
+audio.load()
+play(key, { loop, restart, volume })
+stop(key)
+```
+
+Sound mapping:
+
+```txt
+cutin              -> /sound/cutin.mp3
+diceRoll           -> /sound/dice_roll.mp3
+doubleUpBgm        -> /sound/doubleup_bgm.mp3
+doubleUpSuccess    -> /sound/doubleup_success.mp3
+doubleUpFailure    -> /sound/doubleup_failure.mp3
+mainResult         -> /sound/main_result.mp3
+```
+
+Playback timing:
+
+```txt
+cutin: Round / Player cut-in step start
+diceRoll: Game Roll and Double Up Roll click
+doubleUpBgm: loops while DoubleUp status === SELECT
+mainResult: Game Complete modal visible
+doubleUpSuccess: success popup visible
+doubleUpFailure: failure popup visible
+```
+
+## Hidden Dependency
+
+Browser autoplay policy can block sounds before user interaction. `play()` intentionally catches promise rejections. Double Up BGM is started in an effect but also retried from High / Low / Roll clicks so it can begin after a user gesture.
+
+## Required Safeguards
+
+- Do not move audio creation to module scope; keep it client-only.
+- Do not delete `public/sound/*.mp3`.
+- Keep BGM stop calls when Double Up roll completes or Finish is clicked.
+- Keep `restart: false` for BGM retries so repeated High / Low clicks do not restart the track.
+- If new sounds are added, update `SOUND_SOURCES` and this docs section together.
+
+---
+
+# 9. Cutoff Logic
 
 ## Severity
 
@@ -542,7 +607,7 @@ Settings:
 
 ---
 
-# 9. Result / Double Up / Replay Routing State
+# 10. Result / Double Up / Replay Routing State
 
 ## Severity
 
@@ -662,7 +727,7 @@ The SELECT controls use a three-column grid so High, Low, and Roll fit on one mo
 
 ---
 
-# 10. Settings / Query Param Dependency
+# 11. Settings / Query Param Dependency
 
 ## Severity
 
@@ -747,7 +812,7 @@ Deprecated: older docs and legacy URLs describe `twoPairRate` as the score basis
 
 ---
 
-# 11. CSS Import Dependency
+# 12. CSS Import Dependency
 
 ## Severity
 
@@ -792,7 +857,7 @@ global body colors
 
 ---
 
-# 12. Shared Component Boundary
+# 13. Shared Component Boundary
 
 ## Severity
 
@@ -828,7 +893,7 @@ Do not import game reducer, Zustand store, router, or feature-specific rules int
 
 ---
 
-# 13. Type Shim / Temporary Implementation
+# 14. Type Shim / Temporary Implementation
 
 ## Severity
 
@@ -869,7 +934,7 @@ box.roll({
 
 ---
 
-# 14. Unused / Legacy Dependencies and Files
+# 15. Unused / Legacy Dependencies and Files
 
 ## Severity
 

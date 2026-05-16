@@ -39,6 +39,8 @@ shared/
     Dice3D.tsx
     DiceRollOverlay.tsx
     DiceRollPreloader.tsx
+  hooks/
+    useSoundEffects.ts
 
 styles/
   globals.css
@@ -47,6 +49,7 @@ types/
   dice-box.d.ts
 
 public/assets/dice-box/
+public/sound/
 ```
 
 ---
@@ -403,6 +406,50 @@ Do not generate random values separately in reducer or UI. The actual roll resul
 Held dice are preserved by index. Only unheld dice are replaced by the returned roll values.
 
 `GameScreen` renders `DiceRollPreloader scale={15}` to preload dice-box on game screen entry.
+
+---
+
+# Sound Effects
+
+Audio is centralized in:
+
+```txt
+shared/hooks/useSoundEffects.ts
+```
+
+The hook creates `Audio` instances, sets `preload = "auto"`, calls `load()`, and exposes `play(key, options)` / `stop(key)`.
+
+Current sound mapping:
+
+```txt
+cutin              -> /sound/cutin.mp3
+diceRoll           -> /sound/dice_roll.mp3
+doubleUpBgm        -> /sound/doubleup_bgm.mp3
+doubleUpSuccess    -> /sound/doubleup_success.mp3
+doubleUpFailure    -> /sound/doubleup_failure.mp3
+mainResult         -> /sound/main_result.mp3
+```
+
+Playback timing:
+
+```txt
+TurnCutIn:
+  cutin plays when Round or Player cut-in step starts
+
+GameScreen:
+  diceRoll plays when Roll is clicked
+  mainResult plays when the Game Complete modal first becomes visible
+
+DoubleUpScreen:
+  doubleUpBgm loops while status === SELECT
+  doubleUpBgm is retried from High / Low / Roll clicks to satisfy browser autoplay policy
+  doubleUpBgm stops when the roll completes or Finish is clicked
+  diceRoll plays when Roll is clicked
+  doubleUpSuccess plays when success popup appears
+  doubleUpFailure plays when failure popup appears
+```
+
+Browser autoplay policy can still block sounds before user interaction. The implementation catches `audio.play()` failures and retries the Double Up BGM from user gestures.
 
 ---
 
