@@ -780,6 +780,101 @@ export const DoubleUpScreen =
               >
                 {currentScore}
               </div>
+
+              <div
+                className="
+                  mt-5
+                  grid gap-3
+                  text-left
+                  sm:grid-cols-2
+                "
+              >
+                <div
+                  className="
+                    rounded
+                    border border-red-900
+                    bg-zinc-950/70
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-red-300
+                    "
+                  >
+                    Winner
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-sm
+                      font-bold
+                      text-white
+                    "
+                  >
+                    {isSuccess
+                      ? winnerIndexes
+                          .map(
+                            i =>
+                              getPlayerName(i)
+                          )
+                          .join(", ")
+                      : loserIndexes
+                          .map(
+                            i =>
+                              getPlayerName(i)
+                          )
+                          .join(", ")}
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    rounded
+                    border border-zinc-800
+                    bg-zinc-950/70
+                    p-3
+                  "
+                >
+                  <div
+                    className="
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-widest
+                      text-zinc-500
+                    "
+                  >
+                    Loser
+                  </div>
+                  <div
+                    className="
+                      mt-1
+                      text-sm
+                      font-bold
+                      text-zinc-100
+                    "
+                  >
+                    {isSuccess
+                      ? loserIndexes
+                          .map(
+                            i =>
+                              getPlayerName(i)
+                          )
+                          .join(", ")
+                      : winnerIndexes
+                          .map(
+                            i =>
+                              getPlayerName(i)
+                          )
+                          .join(", ")}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

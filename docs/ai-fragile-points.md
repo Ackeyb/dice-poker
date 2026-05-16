@@ -616,12 +616,15 @@ Settings   -> /?players=...
 DoubleUp FINISHED screen:
 
 ```txt
-Final Score only
+Double Up Complete card:
+  Final Score
+  Winner
+  Loser
 Play Again -> /game?players=...&onePairRate=...&restart=Date.now()
 Settings   -> /?players=...
 ```
 
-Deprecated: FINISHED previously displayed Winner / Loser derived from the main game winner/loser indexes. That display is intentionally removed so the screen presents only the final Double Up result.
+Winner / Loser are intentionally nested inside the Double Up Complete result card. This keeps them attached to the final Double Up outcome instead of looking like a separate main-game result section. `isSuccess` swaps the original winnerIndexes / loserIndexes for the final outcome.
 
 Settings route intentionally carries player information only. Rate is not inherited and remains blank.
 

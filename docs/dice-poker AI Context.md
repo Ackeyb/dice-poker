@@ -544,7 +544,10 @@ For multiple dice, `DiceRollOverlay` intentionally splits rendering into one `Di
 Double Up FINISHED screen provides:
 
 ```txt
-Final Score only
+Double Up Complete card:
+  Final Score
+  Winner
+  Loser
 
 Play Again:
   enabled when playerNames.length >= 2 and onePairRate > 0
@@ -554,7 +557,7 @@ Settings:
   if no playerNames, routes to /
 ```
 
-Deprecated: the FINISHED screen used to display Winner / Loser from the main game handoff. That was removed because it confused the main-game outcome with the final Double Up result.
+Winner / Loser are displayed inside the same Double Up Complete result card so they are read as the final Double Up outcome, not as a separate main-game result block. `isSuccess` decides whether the original winnerIndexes or loserIndexes are displayed as final winners.
 
 ---
 
