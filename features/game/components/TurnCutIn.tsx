@@ -109,11 +109,6 @@ export const TurnCutIn = ({
     return null;
   }
 
-  const title =
-    step === "ROUND"
-      ? `Round ${roundNumber}`
-      : `${playerName}のターン`;
-
   const subtitle =
     step === "ROUND"
       ? "Get Ready"
@@ -145,7 +140,18 @@ export const TurnCutIn = ({
           {subtitle}
         </div>
         <div className="cutin-title">
-          {title}
+          {step === "ROUND" ? (
+            `Round ${roundNumber}`
+          ) : (
+            <>
+              <span className="cutin-player-name">
+                {playerName}
+              </span>
+              <span className="cutin-turn-label">
+                のターン
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

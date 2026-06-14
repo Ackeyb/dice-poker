@@ -655,20 +655,48 @@ export const GameScreen = ({
               </div>
             </div>
 
-            {isWaitingNext && (
-              <div
+            <div
+              className="
+                flex shrink-0
+                items-center gap-2
+              "
+            >
+              {isWaitingNext && (
+                <div
+                  className="
+                    rounded
+                    bg-red-950
+                    px-3 py-2
+                    text-sm
+                    font-bold
+                    text-red-200
+                  "
+                >
+                  NEXT waiting
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={backToSettings}
                 className="
+                  h-9
                   rounded
-                  bg-red-950
-                  px-3 py-2
-                  text-sm
+                  border border-zinc-700
+                  bg-zinc-950
+                  px-2.5
+                  text-xs
                   font-bold
-                  text-red-200
+                  text-zinc-200
+                  transition
+                  hover:border-red-500
+                  hover:text-red-200
                 "
+                aria-label="TOPに戻る"
               >
-                NEXT waiting
-              </div>
-            )}
+                TOP
+              </button>
+            </div>
           </div>
 
           <div

@@ -14,6 +14,7 @@ type DialogMode = "players" | null;
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
+const MAX_PLAYER_NAME_LENGTH = 6;
 
 const SCORE_PREVIEW_HANDS: HandRank[] = [
   "PINSORO",
@@ -31,6 +32,28 @@ const normalizePlayers = (
   players: string[]
 ) => players.map(player => player.trim());
 
+const limitPlayerName = (
+  player: string
+) =>
+  Array.from(player)
+    .slice(0, MAX_PLAYER_NAME_LENGTH)
+    .join("");
+
+const createBlankPlayers = () =>
+  Array.from({ length: MIN_PLAYERS }, () => "");
+
+const ensureEditablePlayers = (
+  players: string[]
+) => {
+  const next = [...players];
+
+  while (next.length < MIN_PLAYERS) {
+    next.push("");
+  }
+
+  return next;
+};
+
 const validatePlayers = (
   players: string[]
 ) => {
@@ -40,6 +63,18 @@ const validatePlayers = (
   if (trimmed.length < MIN_PLAYERS) {
     throw new Error(
       "プレイヤーは2名以上入力してください。"
+    );
+  }
+
+  if (
+    trimmed.some(
+      player =>
+        Array.from(player).length >
+        MAX_PLAYER_NAME_LENGTH
+    )
+  ) {
+    throw new Error(
+      "Player名は6文字以内で入力してください。"
     );
   }
 
@@ -58,7 +93,7 @@ export default function SettingsPage() {
   const [
     players,
     setPlayers,
-  ] = useState<string[]>(["", ""]);
+  ] = useState<string[]>(createBlankPlayers);
 
   const [
     backupPlayers,
@@ -128,7 +163,9 @@ export default function SettingsPage() {
         )
       ) {
         const nextPlayers =
-          parsed.map(player => player.trim());
+          parsed.map(player =>
+            limitPlayerName(player.trim())
+          );
 
         const id =
           setTimeout(() => {
@@ -167,11 +204,19 @@ export default function SettingsPage() {
   };
 
   const openPlayerDialog = () => {
+    const editablePlayers =
+      ensureEditablePlayers(players);
+
     setBackupPlayers(players);
-    setPlayerCount(
-      Math.max(players.length, MIN_PLAYERS)
-    );
+    setPlayers(editablePlayers);
+    setPlayerCount(editablePlayers.length);
     setDialogMode("players");
+  };
+
+  const resetPlayers = () => {
+    setPlayers(createBlankPlayers());
+    setBackupPlayers([]);
+    setPlayerCount(MIN_PLAYERS);
   };
 
   const removePlayer = (index: number) => {
@@ -298,22 +343,48 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={openPlayerDialog}
+            <div
               className="
-                rounded
-                bg-red-600
-                px-4 py-2
-                text-sm
-                font-bold
-                text-white
-                transition
-                hover:bg-red-500
+                flex shrink-0
+                items-center gap-2
               "
             >
-              Edit
-            </button>
+              <button
+                type="button"
+                onClick={openPlayerDialog}
+                className="
+                  rounded
+                  bg-red-600
+                  px-4 py-2
+                  text-sm
+                  font-bold
+                  text-white
+                  transition
+                  hover:bg-red-500
+                "
+              >
+                Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={resetPlayers}
+                className="
+                  rounded
+                  border border-zinc-700
+                  bg-zinc-950
+                  px-3 py-2
+                  text-sm
+                  font-bold
+                  text-zinc-100
+                  transition
+                  hover:border-red-500
+                  hover:text-red-200
+                "
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           <div
@@ -328,8 +399,12 @@ export default function SettingsPage() {
               </span>
             ) : (
               normalizePlayers(players)
-                .filter(Boolean)
-                .map((player, index) => (
+                .map((player, index) => ({
+                  player,
+                  index,
+                }))
+                .filter(({ player }) => Boolean(player))
+                .map(({ player, index }) => (
                   <div
                     key={`${player}-${index}`}
                     className="
@@ -628,11 +703,14 @@ export default function SettingsPage() {
                 <input
                   key={index}
                   type="text"
+                  maxLength={MAX_PLAYER_NAME_LENGTH}
                   value={player}
                   placeholder={`Player ${index + 1}`}
                   onChange={event => {
                     const next = [...players];
-                    next[index] = event.target.value;
+                    next[index] = limitPlayerName(
+                      event.target.value
+                    );
                     setPlayers(next);
                   }}
                   className="

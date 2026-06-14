@@ -107,9 +107,24 @@ body {
   font-size: clamp(42px, 10vw, 106px);
   font-weight: 950;
   line-height: 0.95;
+  overflow-wrap: normal;
   text-shadow:
     3px 3px 0 rgb(127, 29, 29),
     0 0 28px rgba(239, 68, 68, 0.9);
+}
+
+.cutin-player-name,
+.cutin-turn-label {
+  display: block;
+}
+
+.cutin-player-name {
+  word-break: keep-all;
+}
+
+.cutin-turn-label {
+  margin-top: 0.12em;
+  font-size: 0.72em;
 }
 
 @keyframes cutin-fade {
