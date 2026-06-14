@@ -314,6 +314,20 @@ export const GameScreen = ({
   const isWaitingNext =
     state.animationState === "WAITING_NEXT";
 
+  const phaseInstruction =
+    isWaitingNext
+      ? "Nextを押してください"
+      : state.phase === "ROUND1_ROLL"
+        ? "サイコロを振ってください"
+        : state.phase === "ROUND1_HOLD"
+          ? "サイコロをHoldしてNextを押してください"
+          : state.phase === "ROUND2_ROLL"
+            ? "サイコロを振るかSkipしてください"
+            : state.phase === "ROUND3_ROLL" ||
+                state.phase === "ROUND3_HOLD"
+              ? "Holdをしなおしてからサイコロを振ってください"
+              : null;
+
   const resultScore =
     winners.length > 0
       ? calculateScore(
@@ -661,18 +675,26 @@ export const GameScreen = ({
                 items-center gap-2
               "
             >
-              {isWaitingNext && (
+              {phaseInstruction && (
                 <div
                   className="
+                    flex h-10
+                    w-[min(48vw,16rem)]
+                    items-center
+                    justify-center
                     rounded
                     bg-red-950
-                    px-3 py-2
-                    text-sm
+                    px-2
+                    text-center
+                    text-[11px]
                     font-bold
+                    leading-tight
                     text-red-200
+                    sm:w-64
+                    sm:text-xs
                   "
                 >
-                  NEXT waiting
+                  {phaseInstruction}
                 </div>
               )}
 
