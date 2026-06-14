@@ -325,10 +325,7 @@ export const GameScreen = ({
             ? "サイコロを振るかSkipしてください"
             : state.phase === "ROUND3_ROLL" ||
                 state.phase === "ROUND3_HOLD"
-              ? [
-                  "Holdをしなおしてから",
-                  "サイコロを振ってください",
-                ]
+              ? "Holdをしなおしてからサイコロを振ってください"
               : null;
 
   const resultScore =
@@ -678,38 +675,6 @@ export const GameScreen = ({
                 items-center gap-2
               "
             >
-              {phaseInstruction && (
-                <div
-                  className="
-                    flex h-11
-                    w-[min(48vw,16rem)]
-                    items-center
-                    justify-center
-                    rounded
-                    bg-red-950
-                    px-2
-                    text-center
-                    text-[11px]
-                    font-bold
-                    leading-tight
-                    text-red-200
-                    sm:w-64
-                    sm:text-xs
-                  "
-                >
-                  {Array.isArray(phaseInstruction)
-                    ? phaseInstruction.map(line => (
-                        <span
-                          key={line}
-                          className="block"
-                        >
-                          {line}
-                        </span>
-                      ))
-                    : phaseInstruction}
-                </div>
-              )}
-
               <button
                 type="button"
                 onClick={backToSettings}
@@ -732,6 +697,31 @@ export const GameScreen = ({
               </button>
             </div>
           </div>
+
+          {phaseInstruction && (
+            <div
+              className="
+                mt-3
+                flex h-10
+                w-full max-w-[15.25rem]
+                items-center justify-center
+                rounded
+                bg-red-950
+                px-2
+                text-center
+                text-[9px]
+                font-bold
+                leading-none
+                text-red-200
+                whitespace-nowrap
+                min-[390px]:text-[10px]
+                sm:max-w-[23rem]
+                sm:text-xs
+              "
+            >
+              {phaseInstruction}
+            </div>
+          )}
 
           <div
             className="
