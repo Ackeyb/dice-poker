@@ -702,8 +702,8 @@ export const GameScreen = ({
             <div
               className="
                 mt-3
-                flex h-10
-                w-full max-w-[15.25rem]
+                flex h-9
+                w-full
                 items-center justify-center
                 rounded
                 bg-red-950
@@ -715,7 +715,6 @@ export const GameScreen = ({
                 text-red-200
                 whitespace-nowrap
                 min-[390px]:text-[10px]
-                sm:max-w-[23rem]
                 sm:text-xs
               "
             >
