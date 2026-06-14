@@ -325,7 +325,10 @@ export const GameScreen = ({
             ? "サイコロを振るかSkipしてください"
             : state.phase === "ROUND3_ROLL" ||
                 state.phase === "ROUND3_HOLD"
-              ? "Holdをしなおしてからサイコロを振ってください"
+              ? [
+                  "Holdをしなおしてから",
+                  "サイコロを振ってください",
+                ]
               : null;
 
   const resultScore =
@@ -678,7 +681,7 @@ export const GameScreen = ({
               {phaseInstruction && (
                 <div
                   className="
-                    flex h-10
+                    flex h-11
                     w-[min(48vw,16rem)]
                     items-center
                     justify-center
@@ -694,7 +697,16 @@ export const GameScreen = ({
                     sm:text-xs
                   "
                 >
-                  {phaseInstruction}
+                  {Array.isArray(phaseInstruction)
+                    ? phaseInstruction.map(line => (
+                        <span
+                          key={line}
+                          className="block"
+                        >
+                          {line}
+                        </span>
+                      ))
+                    : phaseInstruction}
                 </div>
               )}
 
